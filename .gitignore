@@ -1,0 +1,21 @@
+# Binaries
+/unisearch
+/uniadm
+*.exe
+*.test
+*.out
+*.prof
+
+# Test coverage artifacts
+coverage.txt
+coverage.out
+coverage.html
+*.coverprofile
+
+# Local runtime data (embedded mode default data directory)
+/data/
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/

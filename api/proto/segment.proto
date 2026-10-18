@@ -1,0 +1,197 @@
+// UniSearch segment format definition (design 01-storage-engine.md §4).
+//
+// This file is the normative format document. The Go side intentionally
+// hand-rolls the protobuf wire encoding with
+// google.golang.org/protobuf/encoding/protowire (no protoc/buf in the
+// build environment); field numbers below map 1:1 to the wire tags used by
+// internal/storage/segment/wire.go. Any format change must bump
+// SegmentFooter.format_version and update both sides together.
+syntax = "proto3";
+
+package unisearch;
+
+// ---------------------------------------------------------------------------
+// Shared enums
+// ---------------------------------------------------------------------------
+
+// FieldType mirrors internal/meta.FieldType (design 01 §1.2). Wire values
+// are stored in ColumnHeader.type and ColumnStats min/max interpretation.
+enum FieldType {
+  FIELD_TYPE_UNSPECIFIED = 0;
+  KEYWORD = 1;
+  TEXT = 2;
+  LONG = 3;
+  DOUBLE = 4;
+  DATE = 5;
+  BOOLEAN = 6;
+  IP = 7;
+  GEO_POINT = 8;
+  DENSE_VECTOR = 9;
+  SPARSE_VECTOR = 10;
+  OBJECT = 11;
+  NESTED = 12;
+}
+
+// Encoding identifies the block codec recorded in BlockIndex.encoding and
+// selected at flush time by the type x cardinality matrix (design
+// 01 §4.2). Payload layouts for each value are documented in the
+// "Block payload layouts" section below.
+enum Encoding {
+  ENCODING_UNSPECIFIED = 0;
+  // Dictionary: sorted distinct values (zstd-compressed dictionary) plus
+  // bitpacked row indices. Null rows use the sentinel index == dict size.
+  DICT = 1;
+  // Delta + bitpack: zigzagged deltas of consecutive values, bitpacked
+  // LSB-first (monotonic long/date blocks).
+  DELTA_BITPACK = 2;
+  // Delta + zstd: DELTA_BITPACK payload with the delta section wrapped in
+  // a zstd frame (general numeric blocks).
+  DELTA_ZSTD = 3;
+  // Gorilla XOR float encoding (double blocks).
+  GORILLA = 4;
+  // Run-length encoding of boolean values with a per-block null bitmap.
+  RLE = 5;
+  // Raw length-prefixed values compressed as one zstd frame (high
+  // cardinality keyword/text fallback).
+  ZSTD = 6;
+}
+
+// ---------------------------------------------------------------------------
+// Column files: col_{field_id}.bin (design 01 §4.2)
+//
+// File = ColumnHeader(protobuf) + N independent Blocks. Container layout:
+//
+//   u64  magic  = 'USCOL01\0'          (8 ASCII bytes, little-endian u64)
+//   u32  header_len                      (byte length of the ColumnHeader
+//                                        wire message that follows)
+//   ...  ColumnHeader wire message (header_len bytes)
+//   ...  block data region: each block is
+//          u32 payload_len | payload bytes
+//        BlockIndex.offset is relative to the START of this block data
+//        region (i.e. absolute block position = 12 + header_len + offset).
+// ---------------------------------------------------------------------------
+
+message ColumnHeader {
+  uint32 field_id = 1;   // types.FieldID
+  string field_name = 2; // debug friendly, may be dropped after load
+  FieldType type = 3;
+  uint64 num_rows = 4;  // total rows across all blocks
+  repeated BlockIndex blocks = 5; // block offset table, in row order
+}
+
+message BlockIndex {
+  uint64 offset = 1;   // block payload start, relative to the block data region
+  uint32 encoding = 2; // Encoding value of this block
+  ZoneMap zone = 3;    // actual min/max of the block (nulls excluded)
+  uint32 null_count = 4;
+  uint32 num_rows = 5; // rows in this block (the last block may be short)
+}
+
+// ZoneMap: per-block actual min/max, computed during encoding at zero cost
+// (design 01 §4.2). It feeds query-side block skipping (03 §3.2 rule R2)
+// and vector pre-filter selectivity estimation (02 §2.6).
+//
+// min/max serialization by FieldType:
+//   KEYWORD/TEXT : raw UTF-8 bytes (lexicographic order)
+//   LONG/DATE/IP : 8-byte little-endian int64
+//   DOUBLE       : 8-byte little-endian order-preserving float bits
+//                  (bits ^ (sign_extend(bits)>>63 | 0x8000000000000000))
+//   BOOLEAN      : 1 byte 0x00 (false) / 0x01 (true)
+//   empty min/max: block has no non-null value
+message ZoneMap {
+  bytes min = 1;
+  bytes max = 2;
+  bool has_null = 3;
+}
+
+// Block payload layouts (after the u32 payload_len prefix).
+// "null bitmap" = u32 word_count followed by word_count little-endian u64
+// words; bit i set means row i is null. All multi-byte integers are
+// little-endian.
+//
+//   DICT (keyword/text):
+//     u32 dict_len | zstd(dict blob) | u8 bit_width | u32 num_rows |
+//     bitpacked indices (num_rows values of bit_width bits, LSB-first);
+//     dict blob = u32 count | per entry (u32 len | bytes), sorted;
+//     index == count is the null sentinel.
+//
+//   DICT (long/date/ip):
+//     same wrapper; dict blob = u32 count | count * i64 values.
+//
+//   DELTA_BITPACK (long/date/ip):
+//     u32 null_count | [null bitmap if null_count > 0] |
+//     i64 first_value | u8 bit_width |
+//     bitpacked zigzag deltas ((num_rows - 1) values); null rows and the
+//     first non-null row carry delta 0.
+//
+//   DELTA_ZSTD (long/date/ip):
+//     u32 null_count | [null bitmap] |
+//     u32 frame_len | zstd(i64 first_value | u8 bit_width | bitpacked
+//     zigzag deltas)
+//
+//   GORILLA (double):
+//     u32 null_count | [null bitmap] |
+//     u32 num_rows | f64 first_value (8 raw bytes) | xor bitstream;
+//     bit '0' = value equals previous (also used for null rows);
+//     bit '1' followed by '1' = reuse previous (leading,trailing) window;
+//     bit '1' followed by '0' = new window: u6 leading, u6
+//     (meaningful_bits - 1), then the meaningful xor bits, MSB-first.
+//
+//   RLE (boolean):
+//     u32 null_count | [null bitmap] |
+//     u32 run_count | per run (u32 run_len | u8 value)
+//
+//   ZSTD (keyword/text fallback):
+//     u32 null_count | [null bitmap] |
+//     u32 frame_len | zstd(blob = per row (u32 len | bytes))
+
+// ---------------------------------------------------------------------------
+// meta.footer (design 01 §4.5)
+//
+// File container:
+//   u64 magic = 'USSEGFT1' | u32 payload_len | SegmentFooter wire message
+// ---------------------------------------------------------------------------
+
+message SegmentFooter {
+  uint64 segment_id = 1;
+  uint64 shard_id = 2;   // types.ShardID
+  uint64 num_rows = 3;
+  uint64 min_seq_no = 4; // MVCC range, design 01 §8
+  uint64 max_seq_no = 5;
+  repeated ColumnStats column_stats = 6; // whole-column min/max/null/cardinality
+  uint64 created_at = 7;   // unix millis
+  int64 ttl_expire_at = 8; // ILM (04 §10); 0 = no TTL
+  uint32 format_version = 9; // bump on any incompatible format change
+  // Manifest of all files in the segment directory (meta.footer itself
+  // excluded): per file, sorted by name:
+  //   u32 name_len | name | u64 size | u32 crc32c
+  bytes checksum = 10;
+  // _source row offsets into the DECOMPRESSED src.zst stream; length is
+  // num_rows + 1 (design 01 §4.4: "行偏移表 uint64[] 存于 footer"). Row i
+  // spans source_offsets[i] .. source_offsets[i+1].
+  repeated uint64 source_offsets = 11;
+}
+
+message ColumnStats {
+  uint32 field_id = 1;
+  bytes min = 2;          // same per-type serialization as ZoneMap
+  bytes max = 3;
+  uint64 null_count = 4;
+  uint64 cardinality = 5; // exact distinct non-null count at flush time
+}
+
+// ---------------------------------------------------------------------------
+// src.zst / id.dict / id.hash (design 01 §4.4)
+//
+// src.zst: the whole _source column as ONE zstd-19 stream; row i's bytes
+// span [source_offsets[i], source_offsets[i+1]) of the decompressed stream.
+//
+// id.dict container: u32 frame_len | zstd(blob) where blob =
+//   u32 count | per entry (u32 len | bytes | u32 row_id), sorted by id.
+//
+// id.hash container: u32 capacity (power of two) | u32 count | capacity
+//   slots, each slot = u32 row_id | u32 id_len | id bytes; empty slot is
+//   row_id = 0xFFFFFFFF. Open addressing with linear probing, FNV-1a 64
+//   hash, load factor <= 0.7; built at flush, load is optional (point
+//   lookups only).
+// ---------------------------------------------------------------------------

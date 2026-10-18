@@ -15,7 +15,7 @@ func TestR10_FOR_RoundTrip(t *testing.T) {
 	cases := []struct {
 		name  string
 		width int
-	}{ {"1-bit", 1}, {"4-bit", 4}, {"8-bit", 8}, {"12-bit", 12}, {"16-bit", 16}}
+	}{{"1-bit", 1}, {"4-bit", 4}, {"8-bit", 8}, {"12-bit", 12}, {"16-bit", 16}}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			maxVal := uint64(1)<<tc.width - 1

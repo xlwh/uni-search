@@ -19,8 +19,8 @@ type fakeShard struct {
 	mu      sync.Mutex
 	segs    []storage.SegmentStats
 	merges  [][]types.SegmentID // each call's input segIDs
-	merged  int                // number of MergeSegments calls
-	failErr error              // when set, MergeSegments returns this
+	merged  int                 // number of MergeSegments calls
+	failErr error               // when set, MergeSegments returns this
 }
 
 func (f *fakeShard) ListMergeCandidates() []storage.SegmentStats {

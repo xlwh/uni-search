@@ -96,8 +96,8 @@ type Graph struct {
 	maxLevel   int8
 	vecs       []float32
 	sq         sqState // quantization tier, nil pointer until Quantize (§2.5)
-	segID      int32    // segment id of this graph; informational (§2.4.2)
-	crosslinks []int64  // peer segID<<32 | nodeID; populated by BuildCrosslinks (§2.4.2)
+	segID      int32   // segment id of this graph; informational (§2.4.2)
+	crosslinks []int64 // peer segID<<32 | nodeID; populated by BuildCrosslinks (§2.4.2)
 }
 
 // N returns the number of nodes (== rows).

@@ -93,13 +93,13 @@ func OpenShard(ctx context.Context, cfg ShardConfig) (*Shard, error) {
 	sh := &segmentSetHolder{}
 
 	s := &Shard{
-		shardID:    cfg.ShardID,
-		dataDir:    shardDir,
-		segDir:     segDir,
-		w:          w,
-		mt:         mt,
-		dt:         dt,
-		setHolder:  sh,
+		shardID:     cfg.ShardID,
+		dataDir:     shardDir,
+		segDir:      segDir,
+		w:           w,
+		mt:          mt,
+		dt:          dt,
+		setHolder:   sh,
 		mappingFn:   cfg.MappingFn,
 		applyInsert: cfg.ApplyInsert,
 	}

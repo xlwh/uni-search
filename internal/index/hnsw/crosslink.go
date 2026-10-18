@@ -76,8 +76,8 @@ func topEntranceSet(g *Graph) []int32 {
 	// we just sit at maxLevel and read degrees.
 	level := int(g.maxLevel)
 	type nd struct {
-		id    int32
-		deg   int
+		id  int32
+		deg int
 	}
 	cands := make([]nd, 0, int(g.n))
 	for id := int32(0); id < g.n; id++ {

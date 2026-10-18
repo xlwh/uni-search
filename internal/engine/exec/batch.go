@@ -42,12 +42,12 @@ func SplitDocID(id uint64) (segID uint64, rowID uint32) {
 // (matching roaring's standard "bit i set = row i null").
 type ColumnVec struct {
 	FieldType meta.FieldType
-	Name       string
-	Longs      []int64
-	Doubles    []float64
-	Strings    []string
-	Bools      []bool
-	Nulls      *roaring.Bitmap
+	Name      string
+	Longs     []int64
+	Doubles   []float64
+	Strings   []string
+	Bools     []bool
+	Nulls     *roaring.Bitmap
 }
 
 // ColumnBatch is the §3.3 / 00 §3.1 pooled batch: a fixed-capacity

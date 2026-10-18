@@ -5,8 +5,8 @@ package esapi
 
 import (
 	"context"
-	stderrors "errors"
 	"encoding/json"
+	stderrors "errors"
 	"io"
 	"log/slog"
 	"net/http"

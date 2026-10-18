@@ -56,21 +56,21 @@ type SearchHit struct {
 // SearchResult is the engine-side search outcome; the handler
 // reshapes it into the ES 8.x response skeleton (§6.2).
 type SearchResult struct {
-	Took      int
-	TimedOut  bool
-	Shards    ShardStats
-	Total     int
-	Relation  string // "eq" | "gte"
-	MaxScore  *float32
-	Hits      []SearchHit
+	Took     int
+	TimedOut bool
+	Shards   ShardStats
+	Total    int
+	Relation string // "eq" | "gte"
+	MaxScore *float32
+	Hits     []SearchHit
 }
 
 // ShardStats is the _shards block of the search response.
 type ShardStats struct {
-	Total     int
+	Total      int
 	Successful int
-	Skipped   int
-	Failed    int
+	Skipped    int
+	Failed     int
 }
 
 // IndexInfo is the row returned by _cat/indices.
@@ -88,16 +88,16 @@ type IndexInfo struct {
 
 // ClusterHealth is the _cluster/health body.
 type ClusterHealth struct {
-	ClusterName        string `json:"cluster_name"`
-	Status             string `json:"status"`
-	TimedOut          bool   `json:"timed_out"`
-	NumberOfNodes      int    `json:"number_of_nodes"`
-	NumberOfDataNodes  int    `json:"number_of_data_nodes"`
-	ActivePrimaryShards int  `json:"active_primary_shards"`
-	ActiveShards       int   `json:"active_shards"`
-	RelocatingShards   int   `json:"relocating_shards"`
-	InitializingShards int   `json:"initializing_shards"`
-	UnassignedShards   int   `json:"unassigned_shards"`
+	ClusterName         string `json:"cluster_name"`
+	Status              string `json:"status"`
+	TimedOut            bool   `json:"timed_out"`
+	NumberOfNodes       int    `json:"number_of_nodes"`
+	NumberOfDataNodes   int    `json:"number_of_data_nodes"`
+	ActivePrimaryShards int    `json:"active_primary_shards"`
+	ActiveShards        int    `json:"active_shards"`
+	RelocatingShards    int    `json:"relocating_shards"`
+	InitializingShards  int    `json:"initializing_shards"`
+	UnassignedShards    int    `json:"unassigned_shards"`
 }
 
 // AnalyzeToken is the ES _analyze token structure.
@@ -175,12 +175,12 @@ type GetRequest struct {
 
 // GetResult is the per-item outcome of MGet.
 type GetResult struct {
-	Index    string
-	ID       string
-	Found    bool
-	Source   []byte
-	SeqNo    int64
-	Primary  int64
+	Index   string
+	ID      string
+	Found   bool
+	Source  []byte
+	SeqNo   int64
+	Primary int64
 }
 
 // EngineNoop is a sentinel Engine that returns "not implemented"
@@ -211,9 +211,9 @@ func (EngineNoop) Search(context.Context, []string, []byte) (*SearchResult, erro
 func (EngineNoop) Count(context.Context, []string, []byte) (int64, error) {
 	return 0, errNotImplemented
 }
-func (EngineNoop) PutMapping(context.Context, string, []byte) error  { return errNotImplemented }
+func (EngineNoop) PutMapping(context.Context, string, []byte) error   { return errNotImplemented }
 func (EngineNoop) GetMapping(context.Context, string) ([]byte, error) { return nil, errNotImplemented }
-func (EngineNoop) PutSettings(context.Context, string, []byte) error { return errNotImplemented }
+func (EngineNoop) PutSettings(context.Context, string, []byte) error  { return errNotImplemented }
 func (EngineNoop) GetSettings(context.Context, string) ([]byte, error) {
 	return nil, errNotImplemented
 }
@@ -232,14 +232,14 @@ func (EngineNoop) Health(context.Context) (*ClusterHealth, error) { return nil, 
 
 // versionInfo is the static version block returned by GET /.
 var versionInfo = map[string]any{
-	"name":          "node-1",
-	"cluster_name":  "unisearch",
-	"cluster_uuid":  "unisearch-uuid",
+	"name":         "node-1",
+	"cluster_name": "unisearch",
+	"cluster_uuid": "unisearch-uuid",
 	"version": map[string]any{
 		"number":         "8.12.0",
 		"build_flavor":   "default",
 		"distribution":   "unisearch",
-		"lucene_version":  "none",
+		"lucene_version": "none",
 	},
 	"tagline": "You Know, for Search",
 }

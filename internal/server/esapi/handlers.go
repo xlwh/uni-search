@@ -118,9 +118,9 @@ func (s *Server) handlePutIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 0, map[string]any{
-		"acknowledged":    true,
+		"acknowledged":        true,
 		"shards_acknowledged": true,
-		"index":            idx,
+		"index":               idx,
 	})
 }
 
@@ -221,17 +221,17 @@ func (s *Server) handleGetDoc(w http.ResponseWriter, r *http.Request) {
 	}
 	if notFound {
 		writeJSON(w, http.StatusNotFound, map[string]any{
-			"_index":   idx,
-			"_id":      id,
-			"found":    false,
+			"_index": idx,
+			"_id":    id,
+			"found":  false,
 		})
 		return
 	}
 	writeJSON(w, 0, map[string]any{
 		"_index":        idx,
-		"_id":          id,
-		"_version":     1,
-		"_seq_no":      seqNo,
+		"_id":           id,
+		"_version":      1,
+		"_seq_no":       seqNo,
 		"_primary_term": primary,
 		"found":         true,
 		"_source":       json.RawMessage(source),
@@ -276,10 +276,10 @@ func respondWriteResult(w http.ResponseWriter, res *WriteResult) {
 	}
 	writeJSON(w, status, map[string]any{
 		"_index":        res.Index,
-		"_id":          res.ID,
-		"_version":     res.Version,
-		"result":       res.Result,
-		"_seq_no":      res.SeqNo,
+		"_id":           res.ID,
+		"_version":      res.Version,
+		"result":        res.Result,
+		"_seq_no":       res.SeqNo,
 		"_primary_term": 1,
 		"_shards": map[string]any{
 			"total":      1,
@@ -305,7 +305,7 @@ func conflictBody(res *WriteResult) map[string]any {
 
 // bulkActionLine matches the action line of an NDJSON _bulk request.
 type bulkActionLine struct {
-	Index  *struct {
+	Index *struct {
 		Index   string `json:"_index"`
 		ID      string `json:"_id"`
 		IfSeqNo int64  `json:"if_seq_no,omitempty"`
@@ -392,21 +392,21 @@ func (s *Server) handleBulk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := bulkResponse{
-		Took:    0,
-		Errors:  false,
-		Items:   make([]map[string]any, len(results)),
+		Took:   0,
+		Errors: false,
+		Items:  make([]map[string]any, len(results)),
 	}
 	hasErrors := false
 	for i, res := range results {
 		entry := map[string]any{
 			string(res.Op): map[string]any{
-				"_index":       res.Index,
-				"_id":          res.ID,
-				"_version":     res.Version,
-				"result":       res.Result,
-				"_seq_no":      res.SeqNo,
+				"_index":        res.Index,
+				"_id":           res.ID,
+				"_version":      res.Version,
+				"result":        res.Result,
+				"_seq_no":       res.SeqNo,
 				"_primary_term": 1,
-				"status":       opDefaultStatus(res.Op, res.Result),
+				"status":        opDefaultStatus(res.Op, res.Result),
 			},
 		}
 		if res.Err != nil {
@@ -425,9 +425,9 @@ func (s *Server) handleBulk(w http.ResponseWriter, r *http.Request) {
 
 // bulkResponse is the ES 8.x _bulk response shape.
 type bulkResponse struct {
-	Took   int64                `json:"took"`
-	Errors bool                 `json:"errors"`
-	Items  []map[string]any     `json:"items"`
+	Took   int64            `json:"took"`
+	Errors bool             `json:"errors"`
+	Items  []map[string]any `json:"items"`
 }
 
 // opDefaultStatus returns the per-item HTTP status for an op.
@@ -478,15 +478,15 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		"took":      res.Took,
 		"timed_out": res.TimedOut,
 		"_shards": map[string]any{
-			"total":     res.Shards.Total,
+			"total":      res.Shards.Total,
 			"successful": res.Shards.Successful,
-			"skipped":   res.Shards.Skipped,
-			"failed":    res.Shards.Failed,
+			"skipped":    res.Shards.Skipped,
+			"failed":     res.Shards.Failed,
 		},
 		"hits": map[string]any{
 			"total": map[string]any{
-				"value":     res.Total,
-				"relation":  res.Relation,
+				"value":    res.Total,
+				"relation": res.Relation,
 			},
 			"max_score": res.MaxScore,
 			"hits":      reshapeHits(res.Hits),
@@ -501,10 +501,10 @@ func reshapeHits(hits []SearchHit) []map[string]any {
 	for _, h := range hits {
 		entry := map[string]any{
 			"_index":        h.Index,
-			"_id":          h.ID,
-			"_score":       h.Score,
-			"_source":      json.RawMessage(h.Source),
-			"_seq_no":      h.SeqNo,
+			"_id":           h.ID,
+			"_score":        h.Score,
+			"_source":       json.RawMessage(h.Source),
+			"_seq_no":       h.SeqNo,
 			"_primary_term": h.Primary,
 		}
 		if len(h.SortValues) > 0 {
@@ -531,8 +531,8 @@ func (s *Server) handleCount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 0, map[string]any{
-		"count":    count,
-		"_shards":  map[string]any{"total": 1, "successful": 1, "skipped": 0, "failed": 0},
+		"count":   count,
+		"_shards": map[string]any{"total": 1, "successful": 1, "skipped": 0, "failed": 0},
 	})
 }
 
@@ -624,7 +624,7 @@ func (s *Server) handlePutAlias(w http.ResponseWriter, r *http.Request) {
 		body, _ := readBody(r)
 		var req struct {
 			Actions []struct {
-				Add    *struct {
+				Add *struct {
 					Index string `json:"index"`
 					Alias string `json:"alias"`
 				} `json:"add"`
@@ -681,7 +681,7 @@ func (s *Server) handlePostAliases(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		Actions []struct {
-			Add    *struct {
+			Add *struct {
 				Index string `json:"index"`
 				Alias string `json:"alias"`
 			} `json:"add"`

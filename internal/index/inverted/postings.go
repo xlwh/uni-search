@@ -114,9 +114,9 @@ func (pl *PostingList) Get(docID uint32) (tf uint8, fldLen uint16, positions []u
 
 // PostingListIterator walks a PostingList in ascending docid order.
 type PostingListIterator struct {
-	pl    *PostingList
-	it    roaring.IntIterable
-	idx   int
+	pl  *PostingList
+	it  roaring.IntIterable
+	idx int
 }
 
 // Iterate returns an iterator over the posting list.

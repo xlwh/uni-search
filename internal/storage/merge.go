@@ -409,7 +409,7 @@ type mergeColumnProvider struct {
 
 func (p *mergeColumnProvider) Field() string { return p.field }
 func (p *mergeColumnProvider) Rows() int64   { return p.rows }
-func (p *mergeColumnProvider) Dim() int       { return p.dim }
+func (p *mergeColumnProvider) Dim() int      { return p.dim }
 
 func (p *mergeColumnProvider) ForEachVector(fn func(rowID int32, vec []float32) error) error {
 	var next int32

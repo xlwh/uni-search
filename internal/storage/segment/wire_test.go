@@ -16,7 +16,7 @@ func TestR4_WireColumnHeaderRoundtrip(t *testing.T) {
 		FieldID:   types.FieldID(17),
 		FieldName: "project_id",
 		Type:      meta.TypeKeyword,
-		NumRows:   8192 * 3 + 5,
+		NumRows:   8192*3 + 5,
 		Blocks: []BlockIndex{
 			{
 				Offset:    0,
@@ -50,16 +50,16 @@ func TestR4_WireColumnHeaderRoundtrip(t *testing.T) {
 
 func TestR4_WireFooterRoundtrip(t *testing.T) {
 	f := &SegmentFooter{
-		SegmentID:    types.SegmentID(9_000_000_000_001),
-		ShardID:      types.ShardID(77),
-		NumRows:      100_000,
-		MinSeqNo:     types.SeqNo(512),
-		MaxSeqNo:     types.SeqNo(99_999),
-		ColumnStats:  []ColumnStats{{FieldID: 1, Min: []byte("a"), Max: []byte("z"), NullCount: 4, Cardinality: 10}},
-		CreatedAt:    1_760_000_000_000,
-		TTLExpireAt:  -42,
+		SegmentID:     types.SegmentID(9_000_000_000_001),
+		ShardID:       types.ShardID(77),
+		NumRows:       100_000,
+		MinSeqNo:      types.SeqNo(512),
+		MaxSeqNo:      types.SeqNo(99_999),
+		ColumnStats:   []ColumnStats{{FieldID: 1, Min: []byte("a"), Max: []byte("z"), NullCount: 4, Cardinality: 10}},
+		CreatedAt:     1_760_000_000_000,
+		TTLExpireAt:   -42,
 		FormatVersion: FormatVersion,
-		Checksum:     []byte{0xDE, 0xAD, 0xBE, 0xEF},
+		Checksum:      []byte{0xDE, 0xAD, 0xBE, 0xEF},
 		SourceOffsets: []uint64{0, 10, 35, 100},
 	}
 	got, err := UnmarshalSegmentFooter(MarshalSegmentFooter(f))

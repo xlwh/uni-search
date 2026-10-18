@@ -37,8 +37,8 @@ func newMemtableColumnProvider(field string, totalRows int64, vb *memtable.VecBu
 }
 
 func (p *memtableColumnProvider) Field() string { return p.field }
-func (p *memtableColumnProvider) Rows() int64    { return p.rows }
-func (p *memtableColumnProvider) Dim() int        { return p.dim }
+func (p *memtableColumnProvider) Rows() int64   { return p.rows }
+func (p *memtableColumnProvider) Dim() int      { return p.dim }
 
 // ForEachVector yields (rowID, vec) pairs in row order. Multi-value
 // dense vectors are flattened by the write path before they reach the

@@ -20,9 +20,9 @@ type memTextColumn struct {
 	docs  []string
 }
 
-func (c *memTextColumn) Field() string                              { return c.field }
-func (c *memTextColumn) Rows() int64                                { return int64(len(c.docs)) }
-func (c *memTextColumn) Dim() int                                   { return 0 }
+func (c *memTextColumn) Field() string { return c.field }
+func (c *memTextColumn) Rows() int64   { return int64(len(c.docs)) }
+func (c *memTextColumn) Dim() int      { return 0 }
 func (c *memTextColumn) ForEachVector(func(int32, []float32) error) error {
 	return fmt.Errorf("inverted: text column has no vectors")
 }

@@ -17,10 +17,10 @@ func TestR10_BM25_IDF(t *testing.T) {
 		df   int
 		want float64
 	}{
-		{1, math.Log(1 + (10-1+0.5)/(1+0.5))}, // = ln(1 + 9.5/1.5) = ln(7.333..)
-		{5, math.Log(1 + (10-5+0.5)/(5+0.5))}, // = ln(1 + 5.5/5.5) = ln(2)
+		{1, math.Log(1 + (10-1+0.5)/(1+0.5))},    // = ln(1 + 9.5/1.5) = ln(7.333..)
+		{5, math.Log(1 + (10-5+0.5)/(5+0.5))},    // = ln(1 + 5.5/5.5) = ln(2)
 		{10, math.Log(1 + (10-10+0.5)/(10+0.5))}, // = ln(1 + 0.5/10.5) ≈ 0.0465
-		{0, 0}, // zero df is a guard: returns 0
+		{0, 0},                                   // zero df is a guard: returns 0
 	}
 	for i, c := range cases {
 		got := st.IDF(c.df)

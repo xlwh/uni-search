@@ -47,10 +47,10 @@ type ScanOp struct {
 	bitfilt func(rowID uint32) bool // BitmapFilter predicate (DeleteBitmap hit = false)
 
 	iter     segment.ColumnIterator
-	rowsLeft int                // rows in current decoded block left to drain
+	rowsLeft int // rows in current decoded block left to drain
 	cur      *segment.BlockData
-	curSeg   uint64            // segment id for DocIDs
-	col      ColumnVec          // pre-loaded typed lane
+	curSeg   uint64    // segment id for DocIDs
+	col      ColumnVec // pre-loaded typed lane
 }
 
 // NewScan constructs a ScanOp. The SegmentReader is opened lazily on

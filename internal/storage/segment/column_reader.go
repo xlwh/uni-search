@@ -177,15 +177,15 @@ func (it *colIter) FieldType() meta.FieldType { return it.r.hdr.Type }
 // segment is not visible to the snapshot, so there are no blocks to scan.
 type emptyColumnIterator struct{}
 
-func (emptyColumnIterator) NumBlocks() int                 { return 0 }
-func (emptyColumnIterator) BlockIndex() int                { return 0 }
-func (emptyColumnIterator) Done() bool                     { return true }
-func (emptyColumnIterator) Meta() BlockMeta                { return BlockMeta{Index: 0} }
+func (emptyColumnIterator) NumBlocks() int  { return 0 }
+func (emptyColumnIterator) BlockIndex() int { return 0 }
+func (emptyColumnIterator) Done() bool      { return true }
+func (emptyColumnIterator) Meta() BlockMeta { return BlockMeta{Index: 0} }
 func (emptyColumnIterator) Next(context.Context) (*BlockData, error) {
 	return nil, io.EOF
 }
-func (emptyColumnIterator) Skip()          {}
-func (emptyColumnIterator) Decoded() int   { return 0 }
+func (emptyColumnIterator) Skip()                     {}
+func (emptyColumnIterator) Decoded() int              { return 0 }
 func (emptyColumnIterator) FieldType() meta.FieldType { return meta.TypeLong }
 
 // Ensure the concrete types satisfy the interface.

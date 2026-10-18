@@ -192,7 +192,7 @@ func dispatchQuery(c *parseCtx, name string, raw json.RawMessage) (Query, error)
 // suggested ES-compatible workaround. Anything not listed here is still
 // rejected as unsupported, with a generic message.
 var unsupportedQueries = map[string]struct {
-	milestone string
+	milestone  string
 	workaround string
 }{
 	"match_all":           {"v1.2 (M1)", "omit the query clause; a search without a query matches all documents"},
@@ -223,7 +223,7 @@ var unsupportedQueries = map[string]struct {
 	"distance_feature":    {"v1.2 (M1)", "use a range query on the date or numeric field"},
 	"rank_feature":        {"v1.2 (M1)", "fold the feature into a numeric boost via hybrid weights"},
 	"geo_distance":        {"v1.2 (M1)", "use range queries on the indexed lat/lon subfields"},
-	"geo_bounding_box":     {"v1.2 (M1)", "use range queries on the indexed lat/lon subfields"},
+	"geo_bounding_box":    {"v1.2 (M1)", "use range queries on the indexed lat/lon subfields"},
 	"geo_shape":           {"v1.3 (M2)", "use geo_point with distance queries, or restructure the data"},
 	"sparse_vector":       {"v1.2 (M1)", "use knn on dense vectors"},
 	"semantic":            {"v1.3 (M2)", "embed the text client-side and use match plus knn in a hybrid query"},

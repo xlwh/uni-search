@@ -86,7 +86,7 @@ type FilterPlan struct {
 func PlanVectorFilter(sel EstimatedSelectivity, k int) FilterPlan {
 	plan := FilterPlan{
 		Strategy:   StrategyPostFilter,
-		CandFactor:  5,
+		CandFactor: 5,
 		Budget:     index.SearchBudget{},
 	}
 	if sel.Source == SourceDefaultPost {

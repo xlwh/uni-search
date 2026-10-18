@@ -20,35 +20,35 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockEngine struct {
-	writes     []IndexDoc
-	writeErr   error
-	bulkRes    []WriteResult
-	bulkErr    error
-	getRes     map[string][]byte
-	getSeqNo   map[string]int64
-	notFound   bool
-	deleteRes  *WriteResult
-	deleteErr  error
-	searchRes  *SearchResult
-	searchErr  error
-	countVal   int64
-	countErr   error
-	mgetResult []GetResult
-	mgetErr    error
-	mappingPut []byte
-	mappingGet []byte
-	mappingErr error
+	writes      []IndexDoc
+	writeErr    error
+	bulkRes     []WriteResult
+	bulkErr     error
+	getRes      map[string][]byte
+	getSeqNo    map[string]int64
+	notFound    bool
+	deleteRes   *WriteResult
+	deleteErr   error
+	searchRes   *SearchResult
+	searchErr   error
+	countVal    int64
+	countErr    error
+	mgetResult  []GetResult
+	mgetErr     error
+	mappingPut  []byte
+	mappingGet  []byte
+	mappingErr  error
 	settingsErr error
 	aliasCalls  []struct{ Index, Alias string }
-	aliasesMap map[string][]string
-	aliasErr   error
-	analyzeRes []AnalyzeToken
-	analyzeErr error
-	refreshErr error
-	indicesRes []IndexInfo
-	indicesErr error
-	healthRes  *ClusterHealth
-	healthErr  error
+	aliasesMap  map[string][]string
+	aliasErr    error
+	analyzeRes  []AnalyzeToken
+	analyzeErr  error
+	refreshErr  error
+	indicesRes  []IndexInfo
+	indicesErr  error
+	healthRes   *ClusterHealth
+	healthErr   error
 }
 
 func (m *mockEngine) Write(_ context.Context, doc IndexDoc, _ string) (*WriteResult, error) {
@@ -341,11 +341,11 @@ func TestR17_SearchResponseShape(t *testing.T) {
 	maxScore := float32(1.5)
 	mock := &mockEngine{
 		searchRes: &SearchResult{
-			Took:      12,
-			Shards:    ShardStats{Total: 1, Successful: 1},
-			Total:     2,
-			Relation:  "eq",
-			MaxScore:  &maxScore,
+			Took:     12,
+			Shards:   ShardStats{Total: 1, Successful: 1},
+			Total:    2,
+			Relation: "eq",
+			MaxScore: &maxScore,
 			Hits: []SearchHit{
 				{Index: "docs", ID: "1", Score: 1.5, Source: []byte(`{"title":"a"}`), SeqNo: 1, Primary: 1},
 				{Index: "docs", ID: "2", Score: 0.8, Source: []byte(`{"title":"b"}`), SeqNo: 2, Primary: 1},

@@ -79,7 +79,7 @@ func TestR18_HybridRetrievalE2E(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	var bulkResp struct {
-		Errors bool `json:"errors"`
+		Errors bool                        `json:"errors"`
 		Items  []map[string]map[string]any `json:"items"`
 	}
 	body, _ := io.ReadAll(resp.Body)
@@ -111,8 +111,8 @@ func TestR18_HybridRetrievalE2E(t *testing.T) {
 	resp.Body.Close()
 
 	var searchResp struct {
-		Took    int `json:"took"`
-		Shards  struct {
+		Took   int `json:"took"`
+		Shards struct {
 			Total, Successful int
 		} `json:"_shards"`
 		Hits struct {

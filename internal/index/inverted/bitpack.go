@@ -33,7 +33,9 @@ func bitWidth(vals []uint64) uint8 {
 }
 
 // forEncode bitpacks vals using the minimum bit width. The output is
+//
 //	[1 byte bitWidth][ceil(N*width/8) bytes packed values]
+//
 // little-endian bit order within each byte (bit 0 = LSB).
 func forEncode(vals []uint64) []byte {
 	w := bitWidth(vals)

@@ -17,11 +17,11 @@ import (
 // fallback (rate ignored, always post).
 func TestR9_PlanVectorFilter_BoundaryDecisions(t *testing.T) {
 	cases := []struct {
-		name   string
-		sel    EstimatedSelectivity
-		k      int
+		name      string
+		sel       EstimatedSelectivity
+		k         int
 		wantStrat FilterStrategy
-		wantCand int
+		wantCand  int
 	}{
 		{"pre_5pct_bitmap", EstimatedSelectivity{Rate: 0.05, Source: SourceBitmapIndex}, 10, StrategyPreFilter, 1},
 		{"pre_5pct_zonemap", EstimatedSelectivity{Rate: 0.05, Source: SourceBKDZoneMap}, 10, StrategyPreFilter, 1},

@@ -31,12 +31,12 @@ import (
 
 // Engine implements esapi.Engine for the M0 embedded mode.
 type Engine struct {
-	mu       sync.RWMutex
-	store    *meta.Store
-	dataDir  string
-	metas    map[string]*meta.IndexMeta
-	docs     map[string]map[string]doc // index -> id -> doc
-	nextSeq  int64
+	mu      sync.RWMutex
+	store   *meta.Store
+	dataDir string
+	metas   map[string]*meta.IndexMeta
+	docs    map[string]map[string]doc // index -> id -> doc
+	nextSeq int64
 }
 
 type doc struct {
@@ -437,7 +437,7 @@ func (e *Engine) PutMapping(_ context.Context, index string, body []byte) error 
 	// Merge top-level "mappings.properties" if present, else merge
 	// the body as a mapping fragment.
 	var spec struct {
-		Mappings *meta.Mapping `json:"mappings"`
+		Mappings *meta.Mapping  `json:"mappings"`
 		Settings map[string]any `json:"settings"`
 	}
 	if err := json.Unmarshal(body, &spec); err != nil {
@@ -563,7 +563,7 @@ func (e *Engine) Indices(_ context.Context, _ string) ([]esapi.IndexInfo, error)
 		docs := int64(len(e.docs[name]))
 		infos = append(infos, esapi.IndexInfo{
 			Health:      "green",
-			Status:       "open",
+			Status:      "open",
 			Index:       name,
 			UUID:        name, // M0 uses the index name as the UUID placeholder.
 			Primaries:   1,
@@ -580,11 +580,11 @@ func (e *Engine) Indices(_ context.Context, _ string) ([]esapi.IndexInfo, error)
 func (e *Engine) Health(_ context.Context) (*esapi.ClusterHealth, error) {
 	return &esapi.ClusterHealth{
 		ClusterName:         "unisearch",
-		Status:               "green",
-		NumberOfNodes:        1,
-		NumberOfDataNodes:    1,
-		ActivePrimaryShards:  1,
-		ActiveShards:         1,
+		Status:              "green",
+		NumberOfNodes:       1,
+		NumberOfDataNodes:   1,
+		ActivePrimaryShards: 1,
+		ActiveShards:        1,
 	}, nil
 }
 

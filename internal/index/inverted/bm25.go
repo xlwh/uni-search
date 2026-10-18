@@ -87,7 +87,7 @@ func (s SegmentStats) ScoreTerm(p BM25Params, tf int, fldLen int, df int) float6
 	if denom == 0 {
 		return 0
 	}
-	return idf * (float64(tf)*(p.K1+1)) / denom
+	return idf * (float64(tf) * (p.K1 + 1)) / denom
 }
 
 // ScoreQuery is the §3.3 sum of per-term contributions over a query
@@ -179,7 +179,9 @@ func readStats(r *byteReader) (field string, st SegmentStats, err error) {
 
 // writeAny dispatches on the concrete Go type of v to write a fixed-size
 // little-endian value. Supported types: uint8, uint32, uint64, float64.
-func writeAny(w interface{ Write(p []byte) (n int, err error) }, v any) error {
+func writeAny(w interface {
+	Write(p []byte) (n int, err error)
+}, v any) error {
 	switch x := v.(type) {
 	case uint8:
 		_, err := w.Write([]byte{x})

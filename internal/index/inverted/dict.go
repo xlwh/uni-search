@@ -28,10 +28,10 @@ type TermID uint32
 
 // Segment index file names (§3.1/§3.2 layout under seg_xxx/inv/).
 const (
-	fileTerms    = "terms.sorted" // §3.1 sorted-array dictionary
-	filePostings = "post.bin"     // §3.2 posting lists (one field per index)
-	filePositions = "pos.bin"    // §3.2 position blocks (phrase-capable fields)
-	fileStats    = "stats.bin"   // §3.2/§3.3 segment-level BM25 statistics
+	fileTerms     = "terms.sorted" // §3.1 sorted-array dictionary
+	filePostings  = "post.bin"     // §3.2 posting lists (one field per index)
+	filePositions = "pos.bin"      // §3.2 position blocks (phrase-capable fields)
+	fileStats     = "stats.bin"    // §3.2/§3.3 segment-level BM25 statistics
 )
 
 // dictMagic / dictVersion tag terms.sorted ("TDR1" little-endian).

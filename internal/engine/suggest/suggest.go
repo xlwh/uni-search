@@ -12,9 +12,9 @@ import (
 
 // Suggestion is one suggested term/phrase.
 type Suggestion struct {
-	Text       string
-	Score      float64
-	Frequency  int
+	Text      string
+	Score     float64
+	Frequency int
 }
 
 // TermSuggester finds terms within a given edit distance of the query
@@ -106,22 +106,24 @@ func (s *PhraseSuggester) Suggest(phrase string, maxDist int) []Suggestion {
 	return []Suggestion{result}
 }
 
+// CompletionEntry is one autocomplete candidate for the completion
+// suggester.
+type CompletionEntry struct {
+	Text  string
+	Score float64
+}
+
 // CompletionSuggester provides prefix-based autocomplete suggestions
 // (completion suggester, design 02 §7). Uses a sorted prefix index for
 // M1; M2 can swap to FST-backed lookup.
 type CompletionSuggester struct {
-	entries []completionEntry
-}
-
-type completionEntry struct {
-	text  string
-	score float64
+	entries []CompletionEntry
 }
 
 // NewCompletionSuggester creates a completion suggester from a set of
-// (text, score) entries. Entries must be sorted by text.
-func NewCompletionSuggester(entries []completionEntry) *CompletionSuggester {
-	sort.Slice(entries, func(i, j int) bool { return entries[i].text < entries[j].text })
+// (text, score) entries.
+func NewCompletionSuggester(entries []CompletionEntry) *CompletionSuggester {
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Text < entries[j].Text })
 	return &CompletionSuggester{entries: entries}
 }
 
@@ -134,17 +136,17 @@ func (s *CompletionSuggester) Suggest(prefix string, size int) []Suggestion {
 
 	// Binary search for the prefix range.
 	start := sort.Search(len(s.entries), func(i int) bool {
-		return s.entries[i].text >= prefix
+		return s.entries[i].Text >= prefix
 	})
 
 	var results []Suggestion
 	for i := start; i < len(s.entries); i++ {
-		if !strings.HasPrefix(s.entries[i].text, prefix) {
+		if !strings.HasPrefix(s.entries[i].Text, prefix) {
 			break
 		}
 		results = append(results, Suggestion{
-			Text:  s.entries[i].text,
-			Score: s.entries[i].score,
+			Text:  s.entries[i].Text,
+			Score: s.entries[i].Score,
 		})
 		if len(results) >= size {
 			break

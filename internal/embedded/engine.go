@@ -12,9 +12,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"github.com/unisearch-db/unisearch/internal/jsonx"
 	"fmt"
-	"regexp"
+	"github.com/unisearch-db/unisearch/internal/jsonx"
 	"sort"
 	"strings"
 	"sync"
@@ -22,6 +21,8 @@ import (
 	"github.com/unisearch-db/unisearch/internal/engine/agg"
 	"github.com/unisearch-db/unisearch/internal/engine/dsl"
 	"github.com/unisearch-db/unisearch/internal/engine/plan"
+	"github.com/unisearch-db/unisearch/internal/engine/script"
+	"github.com/unisearch-db/unisearch/internal/engine/suggest"
 	"github.com/unisearch-db/unisearch/internal/errors"
 	"github.com/unisearch-db/unisearch/internal/index/analyzer"
 	"github.com/unisearch-db/unisearch/internal/meta"
@@ -162,6 +163,17 @@ func (e *Engine) Write(ctx context.Context, docReq esapi.IndexDoc, refresh strin
 	if docReq.Op != esapi.OpDelete && idx.miniInv != nil && len(docReq.Source) > 0 {
 		var doc map[string]any
 		if jsonx.Unmarshal(docReq.Source, &doc) == nil {
+			// Percolator registration: a document carrying a "query"
+			// object is a percolator query (ES percolator field
+			// convention); register it so percolate searches can match
+			// documents against it.
+			if idx.percolator != nil {
+				if qraw, ok := doc["query"].(map[string]any); ok && len(qraw) > 0 {
+					if qb, merr := jsonx.Marshal(qraw); merr == nil {
+						_ = idx.percolator.Register(docReq.ID, qb)
+					}
+				}
+			}
 			// Use the seq number as a proxy for rowID in the mini inverted
 			// index (the memtable assigns sequential row IDs).
 			rowID := int32(seq)
@@ -285,6 +297,12 @@ func (e *Engine) Delete(ctx context.Context, index, id string, ifSeqNo *int64, r
 	_, err := idx.shard.Write(ctx, []storage.WriteOp{{Kind: storage.WriteDelete, ID: id}})
 	if err != nil {
 		return nil, fmt.Errorf("embedded: delete: %w", err)
+	}
+
+	// Unregister any percolator query stored under this document ID
+	// (not-found is fine: ordinary documents were never registered).
+	if idx.percolator != nil {
+		_ = idx.percolator.Unregister(id)
 	}
 
 	if refresh == "true" || refresh == "wait_for" {
@@ -447,6 +465,23 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 		total = len(allHits)
 	}
 
+	// script_score: re-score the merged hits by evaluating the script
+	// against each hit's _source (the inner query's score is exposed to
+	// the script as _score), then apply min_score filtering. Doing this
+	// once on the merged hits keeps the memtable and segment paths on a
+	// single scoring implementation.
+	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
+	if ss, ok := q.(*dsl.ScriptScoreQuery); ok && ss != nil && len(allHits) > 0 {
+		allHits = applyScriptScore(ss, allHits)
+		total = len(allHits)
+		maxScore = 0
+		for _, h := range allHits {
+			if h.Score > maxScore {
+				maxScore = h.Score
+			}
+		}
+	}
+
 	// terminate_after: limit the total number of documents collected
 	// (design 03 §8: "行数阈值提前终止"). When set, truncate hits
 	// to this count and update total accordingly.
@@ -549,6 +584,13 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 		result.Highlight = e.runHighlight(extras.Highlight, pagedHits, q)
 	}
 
+	// M1: Run suggesters (term/phrase/completion) against the target
+	// indices' term dictionaries.
+	// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.5
+	if len(extras.Suggest) > 0 {
+		result.Suggest = e.runSuggest(extras.Suggest, targets)
+	}
+
 	// P2: Evaluate script_fields and runtime_mappings for each hit.
 	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.6
 	if len(extras.ScriptFields) > 0 || len(extras.RuntimeMappings) > 0 {
@@ -571,7 +613,7 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 							} `json:"script"`
 						}
 						if jsonx.Unmarshal(raw, &sf) == nil && sf.Script.Source != "" {
-							pagedHits[i].Fields[fieldName] = evalSimpleScript(sf.Script.Source, src)
+							pagedHits[i].Fields[fieldName] = evalScriptField(sf.Script.Source, src, nil, float64(pagedHits[i].Score))
 						}
 					}
 				}
@@ -588,7 +630,7 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 							} `json:"script"`
 						}
 						if jsonx.Unmarshal(raw, &rm) == nil && rm.Script.Source != "" {
-							pagedHits[i].Fields[fieldName] = evalSimpleScript(rm.Script.Source, src)
+							pagedHits[i].Fields[fieldName] = evalScriptField(rm.Script.Source, src, nil, float64(pagedHits[i].Score))
 						}
 					}
 				}
@@ -599,49 +641,216 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 	return result, nil
 }
 
-// evalSimpleScript evaluates a simplified Painless-like script expression
-// against a document. P2 supports: doc['field'].value references and
-// arithmetic expressions (field * N, field + N).
+// evalScriptField evaluates a Painless-subset script expression against
+// a document using the script engine (doc['field'].value, _score,
+// params, Math.*, arithmetic/logic/ternary, vector functions), with the
+// ES-aligned 100k step budget. Returns nil when the script cannot be
+// parsed or evaluated.
 // @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.6
-func evalSimpleScript(source string, doc map[string]any) any {
-	// P2 simplified: extract doc['field'].value references and evaluate
-	// simple arithmetic. For complex scripts, return the source string.
-	type fieldRef struct {
-		field string
+func evalScriptField(source string, doc map[string]any, params map[string]any, score float64) any {
+	scr, err := script.Parse(source)
+	if err != nil {
+		return nil
 	}
-	// Match patterns like doc['field'].value or doc["field"].value
-	re := regexp.MustCompile(`doc\[['"](\w+)['"]\]\.value`)
-	matches := re.FindStringSubmatch(source)
-	if len(matches) == 2 {
-		fieldName := matches[1]
-		if val, ok := doc[fieldName]; ok {
-			// Check if there's an arithmetic operation after the reference.
-			rest := re.ReplaceAllString(source, "__VAL__")
-			if strings.Contains(rest, "__VAL__ *") || strings.Contains(rest, "__VAL__/") {
-				factor := extractMultiplier(rest)
-				if factor != 0 {
-					if num, ok := val.(float64); ok {
-						return num * factor
-					}
-				}
-			}
-			return val
-		}
+	v, err := scr.Eval(&script.ScriptCtx{Doc: doc, Score: score, Params: params})
+	if err != nil {
+		return nil
 	}
-	return nil
+	return v
 }
 
-// extractMultiplier extracts the numeric multiplier from expressions like
-// "__VAL__ * 2" or "__VAL__/ 3".
-func extractMultiplier(expr string) float64 {
-	re := regexp.MustCompile(`__VAL__\s*[*\/]\s*([0-9.]+)`)
-	matches := re.FindStringSubmatch(expr)
-	if len(matches) == 2 {
-		var f float64
-		fmt.Sscanf(matches[1], "%f", &f)
-		return f
+// applyScriptScore re-scores each hit by evaluating the script_score
+// script against the hit's _source (the inner query score is passed to
+// the script as _score) and drops hits below min_score.
+// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
+func applyScriptScore(q *dsl.ScriptScoreQuery, hits []esapi.SearchHit) []esapi.SearchHit {
+	scr, err := script.Parse(q.Script)
+	if err != nil {
+		// ES rejects unparseable scripts at request validation; keep the
+		// inner scores here so search degrades to the base query rather
+		// than failing the whole request.
+		return hits
 	}
-	return 0
+	var out []esapi.SearchHit
+	for _, h := range hits {
+		src := decodeSource(h.Source)
+		if src == nil {
+			continue
+		}
+		v, err := scr.EvalFloat(&script.ScriptCtx{Doc: src, Score: float64(h.Score), Params: q.Params})
+		if err != nil {
+			continue
+		}
+		if q.MinScore > 0 && v < q.MinScore {
+			continue
+		}
+		h.Score = float32(v)
+		out = append(out, h)
+	}
+	return out
+}
+
+// ---------------------------------------------------------------------------
+// Suggesters (term / phrase / completion, design 03 §10)
+// ---------------------------------------------------------------------------
+
+// suggestSpec is one named suggester in the "suggest" search body
+// section, e.g. {"text": "tring", "term": {"field": "title"}}.
+type suggestSpec struct {
+	Prefix     string       `json:"prefix"`
+	Text       string       `json:"text"`
+	Term       *suggestBody `json:"term"`
+	Phrase     *suggestBody `json:"phrase"`
+	Completion *suggestBody `json:"completion"`
+}
+
+// suggestBody carries the per-suggester options (field, size, max_edits).
+type suggestBody struct {
+	Field    string `json:"field"`
+	Size     int    `json:"size"`
+	MaxEdits int    `json:"max_edits"`
+}
+
+// suggestOption is one option in an ES-shaped suggestion entry.
+type suggestOption struct {
+	Text  string  `json:"text"`
+	Score float64 `json:"score"`
+	Freq  int     `json:"freq,omitempty"`
+}
+
+// suggestEntry is one ES-shaped suggestion entry (term suggesters emit
+// one entry per input token; phrase/completion emit one for the text).
+type suggestEntry struct {
+	Text    string          `json:"text"`
+	Offset  int             `json:"offset"`
+	Length  int             `json:"length"`
+	Options []suggestOption `json:"options"`
+}
+
+// runSuggest evaluates the "suggest" section of a search body against
+// the target indices' term dictionaries and returns the ES-shaped
+// "suggest" response block.
+// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.5
+func (e *Engine) runSuggest(raw jsonx.RawMessage, targets []string) map[string]any {
+	var specs map[string]suggestSpec
+	if jsonx.Unmarshal(raw, &specs) != nil || len(specs) == 0 {
+		return nil
+	}
+	out := make(map[string]any, len(specs))
+	for name, spec := range specs {
+		var body *suggestBody
+		switch {
+		case spec.Completion != nil:
+			body = spec.Completion
+		case spec.Phrase != nil:
+			body = spec.Phrase
+		case spec.Term != nil:
+			body = spec.Term
+		default:
+			continue
+		}
+		terms := e.collectSuggestTerms(targets, body.Field)
+		var entries []suggestEntry
+		switch {
+		case spec.Completion != nil:
+			entries = runCompletionSuggester(spec, body, terms)
+		case spec.Phrase != nil:
+			entries = runPhraseSuggester(spec, body, terms)
+		case spec.Term != nil:
+			entries = runTermSuggester(spec, body, terms)
+		}
+		if len(entries) > 0 {
+			out[name] = entries
+		}
+	}
+	return out
+}
+
+// collectSuggestTerms merges the term→docFreq dictionary of one field
+// across the target indices (real-time memtable terms via miniInv).
+func (e *Engine) collectSuggestTerms(targets []string, field string) map[string]int {
+	terms := make(map[string]int)
+	for _, name := range targets {
+		idx, ok := e.manager.getIndex(name)
+		if !ok || idx.miniInv == nil || field == "" {
+			continue
+		}
+		fid, _, found := idx.resolveField(field)
+		if !found {
+			continue
+		}
+		for t, df := range idx.miniInv.fieldTerms(fid) {
+			terms[t] += df
+		}
+	}
+	return terms
+}
+
+// runTermSuggester runs the term suggester: one entry per input token,
+// each with edit-distance suggestions ranked by frequency.
+func runTermSuggester(spec suggestSpec, body *suggestBody, terms map[string]int) []suggestEntry {
+	ts := suggest.NewTermSuggester(terms)
+	size := body.Size
+	if size <= 0 {
+		size = 5
+	}
+	maxEdits := body.MaxEdits
+	if maxEdits <= 0 {
+		maxEdits = 2
+	}
+	var entries []suggestEntry
+	offset := 0
+	for _, word := range strings.Fields(spec.Text) {
+		entry := suggestEntry{Text: word, Offset: offset, Length: len(word)}
+		for _, s := range ts.Suggest(word, maxEdits) {
+			if len(entry.Options) >= size {
+				break
+			}
+			entry.Options = append(entry.Options, suggestOption{Text: s.Text, Score: s.Score, Freq: s.Frequency})
+		}
+		entries = append(entries, entry)
+		offset += len(word) + 1
+	}
+	return entries
+}
+
+// runPhraseSuggester runs the phrase suggester: corrects each unknown
+// word to its best term suggestion and returns one corrected-phrase
+// entry.
+func runPhraseSuggester(spec suggestSpec, body *suggestBody, terms map[string]int) []suggestEntry {
+	ps := suggest.NewPhraseSuggester(suggest.NewTermSuggester(terms))
+	maxEdits := body.MaxEdits
+	if maxEdits <= 0 {
+		maxEdits = 2
+	}
+	entry := suggestEntry{Text: spec.Text, Offset: 0, Length: len(spec.Text)}
+	for _, s := range ps.Suggest(spec.Text, maxEdits) {
+		entry.Options = append(entry.Options, suggestOption{Text: s.Text, Score: s.Score})
+	}
+	return []suggestEntry{entry}
+}
+
+// runCompletionSuggester runs the completion suggester: prefix-match
+// autocomplete over the field's terms.
+func runCompletionSuggester(spec suggestSpec, body *suggestBody, terms map[string]int) []suggestEntry {
+	entries := make([]suggest.CompletionEntry, 0, len(terms))
+	for t, df := range terms {
+		entries = append(entries, suggest.CompletionEntry{Text: t, Score: float64(df)})
+	}
+	cs := suggest.NewCompletionSuggester(entries)
+	prefix := spec.Prefix
+	if prefix == "" {
+		prefix = spec.Text
+	}
+	size := body.Size
+	if size <= 0 {
+		size = 5
+	}
+	entry := suggestEntry{Text: prefix, Offset: 0, Length: len(prefix)}
+	for _, s := range cs.Suggest(prefix, size) {
+		entry.Options = append(entry.Options, suggestOption{Text: s.Text, Score: s.Score, Freq: int(s.Score)})
+	}
+	return []suggestEntry{entry}
 }
 
 // runHighlight produces per-field highlighted fragments for the
@@ -1250,6 +1459,13 @@ func postFilterHits(hits []esapi.SearchHit, q dsl.Query) []esapi.SearchHit {
 		return filterExistsHits(hits, typed)
 	case *dsl.TermsQuery:
 		return filterTermsHits(hits, typed)
+	case *dsl.PercolateQuery:
+		// Percolate hits are produced by the registered-query table in
+		// searchMemtableByPercolate; their _source is the stored query
+		// DSL, not the percolated document, so _source matching does not
+		// apply. Pass them through untouched.
+		_ = typed
+		return hits
 	case *dsl.MatchQuery, *dsl.MatchAllQuery, *dsl.MatchPhraseQuery,
 		*dsl.TermQuery, *dsl.MatchNoneQuery, *dsl.KnnQuery,
 		*dsl.HybridQuery, *dsl.SparseVectorQuery, *dsl.MultiMatchQuery,
@@ -1625,7 +1841,7 @@ func applyRescore(hits []esapi.SearchHit, rescoreJSON jsonx.RawMessage) []esapi.
 
 // collapseSpec defines the collapse configuration.
 type collapseSpec struct {
-	Field     string          `json:"field"`
+	Field     string           `json:"field"`
 	InnerHits jsonx.RawMessage `json:"inner_hits,omitempty"`
 }
 

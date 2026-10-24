@@ -4,6 +4,7 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/unisearch-db/unisearch/internal/index/analyzer"
@@ -64,6 +65,22 @@ func newMiniInvertedIndex() *miniInvertedIndex {
 // escaping the token text (tokens are already normalized by the analyzer).
 func termKey(fieldID types.FieldID, token string) string {
 	return strconv.Itoa(int(fieldID)) + ":" + token
+}
+
+// fieldTerms returns a copy of the term→docFreq map for one field,
+// used by the suggest engine to build its term dictionary from the
+// real-time (unflushed) data.
+func (m *miniInvertedIndex) fieldTerms(fieldID types.FieldID) map[string]int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	prefix := strconv.Itoa(int(fieldID)) + ":"
+	out := make(map[string]int)
+	for k, df := range m.docFreq {
+		if strings.HasPrefix(k, prefix) {
+			out[strings.TrimPrefix(k, prefix)] = df
+		}
+	}
+	return out
 }
 
 // add updates the inverted index in real time during a write (Phase 1).

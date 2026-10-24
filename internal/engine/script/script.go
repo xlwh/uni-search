@@ -19,11 +19,11 @@ const MaxSteps = 100_000
 
 // ScriptCtx is the evaluation context passed to every expression.
 type ScriptCtx struct {
-	Doc    map[string]any   // document fields
-	Score  float64          // _score value
-	Params map[string]any   // user-supplied params
-	Steps  int              // step counter (reset per Eval)
-	Budget int              // max steps (0 = MaxSteps)
+	Doc    map[string]any // document fields
+	Score  float64        // _score value
+	Params map[string]any // user-supplied params
+	Steps  int            // step counter (reset per Eval)
+	Budget int            // max steps (0 = MaxSteps)
 }
 
 // Evaluator evaluates a parsed script expression.
@@ -128,9 +128,9 @@ func (n *literalNode) Eval(ctx *ScriptCtx) (any, error) {
 
 // binaryNode
 type binaryNode struct {
-	op       string
-	left     node
-	right    node
+	op    string
+	left  node
+	right node
 }
 
 func (n *binaryNode) Eval(ctx *ScriptCtx) (any, error) {
@@ -677,15 +677,34 @@ func (p *parser) parseIdentifier() (node, error) {
 		return &scoreNode{}, nil
 	}
 
-	// Check for doc['field'] access
-	if strings.HasPrefix(name, "doc['") || strings.HasPrefix(name, "doc[\"") {
-		// Extract field name from doc['field']
-		quote := name[4]
-		idx := strings.IndexByte(name[5:], quote)
-		if idx >= 0 {
-			field := name[5 : 5+idx]
-			return &docFieldNode{field: field}, nil
+	// doc['field'] / doc["field"] access: the scanner stops at '[',
+	// so the bracket expression is parsed here. An optional ".value"
+	// suffix is accepted (ES painless: doc['field'].value).
+	if name == "doc" && p.peek() == '[' {
+		p.pos++ // skip '['
+		quote := p.peek()
+		if quote != '\'' && quote != '"' {
+			return nil, fmt.Errorf("expected quoted field name after doc[")
 		}
+		p.pos++ // skip opening quote
+		fstart := p.pos
+		for p.pos < len(p.src) && p.src[p.pos] != quote {
+			p.pos++
+		}
+		if p.pos >= len(p.src) {
+			return nil, fmt.Errorf("unterminated field name in doc[...]")
+		}
+		field := p.src[fstart:p.pos]
+		p.pos++ // skip closing quote
+		p.skipSpace()
+		if p.peek() != ']' {
+			return nil, fmt.Errorf("expected ']' after doc['field'")
+		}
+		p.pos++ // skip ']'
+		if p.peek2(".value") {
+			p.pos += len(".value")
+		}
+		return &docFieldNode{field: field}, nil
 	}
 
 	// Check for params.key

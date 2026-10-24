@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/unisearch-db/unisearch/internal/engine/percolate"
 	"github.com/unisearch-db/unisearch/internal/meta"
 	"github.com/unisearch-db/unisearch/internal/storage"
 	"github.com/unisearch-db/unisearch/pkg/types"
@@ -20,13 +21,14 @@ import (
 // the mini inverted index for memtable search (D1/D4).
 // @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.1.1
 type indexState struct {
-	name      string
-	shard     *storage.Shard
-	fieldIDs  map[string]types.FieldID   // field name → FieldID
-	fieldDefs map[types.FieldID]*meta.FieldDef // FieldID → definition
-	miniInv   *miniInvertedIndex          // memtable mini inverted index (D1/D4)
-	cancel    context.CancelFunc         // stops shard background goroutine
-	mu        sync.RWMutex                // protects fieldIDs/fieldDefs
+	name       string
+	shard      *storage.Shard
+	fieldIDs   map[string]types.FieldID         // field name → FieldID
+	fieldDefs  map[types.FieldID]*meta.FieldDef // FieldID → definition
+	miniInv    *miniInvertedIndex               // memtable mini inverted index (D1/D4)
+	percolator *percolate.Percolator            // registered percolator queries (docs with a "query" field)
+	cancel     context.CancelFunc               // stops shard background goroutine
+	mu         sync.RWMutex                     // protects fieldIDs/fieldDefs
 }
 
 // mappingFn returns the current field definitions for the Shard's
@@ -140,7 +142,7 @@ func (m *indexManager) createIndex(ctx context.Context, name string, mapping jso
 		Mapping:   mp,
 		Settings:  meta.IndexSettings{NumberOfShards: 1, NumberOfReplicas: 0, RefreshInterval: "1s"},
 		Shards:    []types.ShardID{1},
-		CreatedAt:  time.Now(),
+		CreatedAt: time.Now(),
 		FieldIDs:  fieldIDs,
 	}
 
@@ -248,10 +250,11 @@ func (m *indexManager) recoverAll(ctx context.Context) error {
 // background flush loop.
 func (m *indexManager) openShardForIndex(ctx context.Context, name string, im *meta.IndexMeta, fieldIDs map[string]types.FieldID, fieldDefs map[types.FieldID]*meta.FieldDef) (*indexState, error) {
 	idx := &indexState{
-		name:      name,
-		fieldIDs:  fieldIDs,
-		fieldDefs: fieldDefs,
-		miniInv:   newMiniInvertedIndex(),
+		name:       name,
+		fieldIDs:   fieldIDs,
+		fieldDefs:  fieldDefs,
+		miniInv:    newMiniInvertedIndex(),
+		percolator: percolate.New(),
 	}
 
 	// Each index gets its own subdirectory to isolate WAL/segment data.

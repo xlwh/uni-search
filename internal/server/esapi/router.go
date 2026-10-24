@@ -25,16 +25,16 @@ import (
 
 // Server bundles the registered mux and bound Engine.
 type Server struct {
-	engine       Engine
-	mux          *http.ServeMux
-	pitMgr       *PITManager
-	scrollMgr    *ScrollManager
-	templates    sync.Map // @spec: deep-gap-remediation 02_spec.md#2.3.3
-	ilmPolicies   sync.Map // @spec: deep-gap-remediation 02_spec.md#2.3.3
-	synonymStore *synonyms.SynonymStore    // @spec: es-feature-gap-fill 02_spec.md#2.9
-	asyncSearchMgr *AsyncSearchManager     // @spec: es-feature-gap-fill 02_spec.md#2.8
-	pipelineStore  *ingest.PipelineStore   // @spec: es-feature-gap-fill 02_spec.md#2.7
-	snapshotRepos  *snapshot.RepoRegistry  // @spec: es-feature-gap-fill 02_spec.md#2.6
+	engine         Engine
+	mux            *http.ServeMux
+	pitMgr         *PITManager
+	scrollMgr      *ScrollManager
+	templates      sync.Map               // @spec: deep-gap-remediation 02_spec.md#2.3.3
+	ilmPolicies    sync.Map               // @spec: deep-gap-remediation 02_spec.md#2.3.3
+	synonymStore   *synonyms.SynonymStore // @spec: es-feature-gap-fill 02_spec.md#2.9
+	asyncSearchMgr *AsyncSearchManager    // @spec: es-feature-gap-fill 02_spec.md#2.8
+	pipelineStore  *ingest.PipelineStore  // @spec: es-feature-gap-fill 02_spec.md#2.7
+	snapshotRepos  *snapshot.RepoRegistry // @spec: es-feature-gap-fill 02_spec.md#2.6
 }
 
 // NewServer registers every route and returns a Server ready to
@@ -229,6 +229,10 @@ func (s *Server) register() {
 	s.mux.HandleFunc("GET /{index}/_search", mw(s.handleSearch))
 	s.mux.HandleFunc("GET /_search", mw(s.handleSearch))
 	s.mux.HandleFunc("POST /{index}/_knn_search", mw(s.handleSearch))
+
+	// _percolate: match a submitted document against the index's
+	// registered percolator queries (ES 1.x-style convenience API).
+	s.mux.HandleFunc("POST /{index}/_percolate", mw(s.handlePercolate))
 
 	// _count and _mget.
 	s.mux.HandleFunc("POST /{index}/_count", mw(s.handleCount))

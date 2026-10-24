@@ -14,6 +14,7 @@ import (
 	"github.com/unisearch-db/unisearch/internal/engine/exec"
 	"github.com/unisearch-db/unisearch/internal/engine/fusion"
 	"github.com/unisearch-db/unisearch/internal/engine/plan"
+	"github.com/unisearch-db/unisearch/internal/engine/script"
 	"github.com/unisearch-db/unisearch/internal/index"
 	"github.com/unisearch-db/unisearch/internal/index/analyzer"
 	"github.com/unisearch-db/unisearch/internal/jsonx"
@@ -479,7 +480,7 @@ func (e *batchEmitter) Close() {
 type noopOperator struct{}
 
 func (noopOperator) Next(context.Context) (*exec.ColumnBatch, error) { return nil, exec.ErrEOF }
-func (noopOperator) Close()                                           {}
+func (noopOperator) Close()                                          {}
 
 // makeRowPredicate converts a DSL query into a RowPredicate for the
 // PredFilterOp. It evaluates term, terms, range, and exists predicates
@@ -1157,12 +1158,11 @@ func searchMemtableByFunctionScore(q *dsl.FunctionScoreQuery, idx *indexState, s
 }
 
 func searchMemtableByScriptScore(q *dsl.ScriptScoreQuery, idx *indexState, snap types.Snapshot) []scoredHit {
-	base := searchMemtableByQuery(q.Query, idx, snap, nil)
-	// P1: script scoring simplified — assign uniform score 1.0.
-	for i := range base {
-		base[i].score = 1.0
-	}
-	return base
+	// Keep the inner query's real scores; the script re-scoring is applied
+	// uniformly to memtable and segment hits in Engine.Search (the script
+	// receives the inner score as _score), so both paths share one
+	// implementation.
+	return searchMemtableByQuery(q.Query, idx, snap, nil)
 }
 
 func searchMemtableByGeoDistance(q *dsl.GeoDistanceQuery, idx *indexState, snap types.Snapshot) []scoredHit {
@@ -1250,10 +1250,14 @@ func searchMemtableByMoreLikeThis(q *dsl.MoreLikeThisQuery, idx *indexState, sna
 	var hits []scoredHit
 	idx.shard.IterateMemtable(snap, func(rowID types.RowID, id string, seq types.SeqNo, source []byte) bool {
 		var doc map[string]any
-		if jsonx.Unmarshal(source, &doc) != nil { return true }
+		if jsonx.Unmarshal(source, &doc) != nil {
+			return true
+		}
 		fields := q.Fields
 		if len(fields) == 0 {
-			for k := range doc { fields = append(fields, k) }
+			for k := range doc {
+				fields = append(fields, k)
+			}
 		}
 		for _, f := range fields {
 			if v, ok := doc[f]; ok {
@@ -1270,13 +1274,17 @@ func searchMemtableByMoreLikeThis(q *dsl.MoreLikeThisQuery, idx *indexState, sna
 
 func searchMemtableBySimpleQueryString(q *dsl.SimpleQueryStringQuery, idx *indexState, snap types.Snapshot) []scoredHit {
 	fields := q.Fields
-	if len(fields) == 0 { fields = []string{"_all"} }
+	if len(fields) == 0 {
+		fields = []string{"_all"}
+	}
 	matchQ := &dsl.MatchQuery{Field: fields[0], Text: q.Query, Operator: q.DefaultOperator, Boost: q.Boost}
 	return searchMemtableByMatch(matchQ, idx, snap)
 }
 
 func searchMemtableByCombinedFields(q *dsl.CombinedFieldsQuery, idx *indexState, snap types.Snapshot) []scoredHit {
-	if len(q.Fields) == 0 { return scanMemtable(idx, snap) }
+	if len(q.Fields) == 0 {
+		return scanMemtable(idx, snap)
+	}
 	matchQ := &dsl.MatchQuery{Field: q.Fields[0], Text: q.Query, Operator: q.Operator, Boost: q.Boost}
 	return searchMemtableByMatch(matchQ, idx, snap)
 }
@@ -1293,13 +1301,19 @@ func searchMemtableByMatchBoolPrefix(q *dsl.MatchBoolPrefixQuery, idx *indexStat
 func searchMemtableByDistanceFeature(q *dsl.DistanceFeatureQuery, idx *indexState, snap types.Snapshot) []scoredHit {
 	var hits []scoredHit
 	pivot, _ := q.Pivot.(float64)
-	if pivot <= 0 { pivot = 1.0 }
+	if pivot <= 0 {
+		pivot = 1.0
+	}
 	origin, _ := q.Origin.(float64)
 	idx.shard.IterateMemtable(snap, func(rowID types.RowID, id string, seq types.SeqNo, source []byte) bool {
 		var doc map[string]any
-		if jsonx.Unmarshal(source, &doc) != nil { return true }
+		if jsonx.Unmarshal(source, &doc) != nil {
+			return true
+		}
 		val, ok := doc[q.Field]
-		if !ok { return true }
+		if !ok {
+			return true
+		}
 		fieldVal, _ := val.(float64)
 		dist := math.Abs(fieldVal - origin)
 		score := float32(q.Boost * pivot / (pivot + dist))
@@ -1313,12 +1327,18 @@ func searchMemtableByRankFeature(q *dsl.RankFeatureQuery, idx *indexState, snap 
 	var hits []scoredHit
 	idx.shard.IterateMemtable(snap, func(rowID types.RowID, id string, seq types.SeqNo, source []byte) bool {
 		var doc map[string]any
-		if jsonx.Unmarshal(source, &doc) != nil { return true }
+		if jsonx.Unmarshal(source, &doc) != nil {
+			return true
+		}
 		val, ok := doc[q.Field]
-		if !ok { return true }
+		if !ok {
+			return true
+		}
 		fieldVal, _ := val.(float64)
-		if fieldVal <= 0 { fieldVal = 1.0 }
-		score := float32(q.Boost * math.Log(1.0 + q.Positive / (fieldVal + q.Negative)))
+		if fieldVal <= 0 {
+			fieldVal = 1.0
+		}
+		score := float32(q.Boost * math.Log(1.0+q.Positive/(fieldVal+q.Negative)))
 		hits = append(hits, scoredHit{rowID: uint32(rowID), score: score, source: source, id: id})
 		return true
 	})
@@ -1357,18 +1377,26 @@ func searchMemtableByTermsSet(q *dsl.TermsSetQuery, idx *indexState, snap types.
 	var hits []scoredHit
 	idx.shard.IterateMemtable(snap, func(rowID types.RowID, id string, seq types.SeqNo, source []byte) bool {
 		var doc map[string]any
-		if jsonx.Unmarshal(source, &doc) != nil { return true }
+		if jsonx.Unmarshal(source, &doc) != nil {
+			return true
+		}
 		val, ok := doc[q.Field]
-		if !ok { return true }
+		if !ok {
+			return true
+		}
 		// Count how many values from the set match.
 		matched := 0
 		switch arr := val.(type) {
 		case []any:
 			for _, e := range arr {
-				if valueSet[fmt.Sprintf("%v", e)] { matched++ }
+				if valueSet[fmt.Sprintf("%v", e)] {
+					matched++
+				}
 			}
 		default:
-			if valueSet[fmt.Sprintf("%v", val)] { matched = 1 }
+			if valueSet[fmt.Sprintf("%v", val)] {
+				matched = 1
+			}
 		}
 		// Determine minimum required matches.
 		minMatch := 1
@@ -1392,13 +1420,18 @@ func searchMemtableByTermsSet(q *dsl.TermsSetQuery, idx *indexState, snap types.
 // ---------------------------------------------------------------------------
 
 func searchMemtableByScript(q *dsl.ScriptQuery, idx *indexState, snap types.Snapshot) []scoredHit {
+	scr, err := script.Parse(q.Script)
+	if err != nil {
+		// Unparseable script matches nothing (ES rejects at parse time).
+		return nil
+	}
 	var hits []scoredHit
 	idx.shard.IterateMemtable(snap, func(rowID types.RowID, id string, seq types.SeqNo, source []byte) bool {
 		var doc map[string]any
-		if jsonx.Unmarshal(source, &doc) != nil { return true }
-		// Simplified: evaluate script as boolean — check if doc has any field
-		// referenced in the script. Real implementation would use the script engine.
-		if docMatchesQuery(&dsl.MatchAllQuery{}, doc) {
+		if jsonx.Unmarshal(source, &doc) != nil {
+			return true
+		}
+		if evalScriptBool(scr, doc, q.Params, 0) {
 			hits = append(hits, scoredHit{rowID: uint32(rowID), score: float32(q.Boost), source: source, id: id})
 		}
 		return true
@@ -1406,17 +1439,71 @@ func searchMemtableByScript(q *dsl.ScriptQuery, idx *indexState, snap types.Snap
 	return hits
 }
 
+// evalScriptBool evaluates a compiled script as a boolean filter against
+// a document (the script engine path, replacing the former MatchAll stub).
+func evalScriptBool(scr *script.Script, doc map[string]any, params map[string]any, score float64) bool {
+	v, err := scr.Eval(&script.ScriptCtx{Doc: doc, Score: score, Params: params})
+	if err != nil {
+		return false
+	}
+	switch b := v.(type) {
+	case bool:
+		return b
+	case float64:
+		return b != 0
+	case nil:
+		return false
+	default:
+		return true
+	}
+}
+
 func searchMemtableByPercolate(q *dsl.PercolateQuery, idx *indexState, snap types.Snapshot) []scoredHit {
-	// Simplified: percolate matches all docs (real implementation would
-	// match the document against registered percolator queries).
-	return scanMemtable(idx, snap)
+	// Resolve the document to percolate: inline "document" wins, then the
+	// stored "id" (fetched from this shard's current snapshot).
+	var doc map[string]any
+	if q.Document != nil {
+		doc = q.Document
+	} else if q.DocumentID != "" && idx.shard != nil {
+		if src, _, found := idx.shard.GetDocSource(context.Background(), q.DocumentID, snap); found {
+			_ = jsonx.Unmarshal(src, &doc)
+		}
+	}
+	if len(doc) == 0 || idx.percolator == nil {
+		return nil
+	}
+	docJSON, err := jsonx.Marshal(doc)
+	if err != nil {
+		return nil
+	}
+	matches, err := idx.percolator.Match(docJSON)
+	if err != nil {
+		return nil
+	}
+	// Each match is one registered percolator query: the hit's _id is
+	// the query document's ID and _source is the stored query DSL.
+	var hits []scoredHit
+	for _, queryID := range matches {
+		var stored []byte
+		if sq := idx.percolator.Lookup(queryID); sq != nil {
+			stored = sq.Query
+		}
+		hits = append(hits, scoredHit{
+			id:     queryID,
+			score:  float32(q.Boost),
+			source: stored,
+		})
+	}
+	return hits
 }
 
 func searchMemtableByGeoShape(q *dsl.GeoShapeQuery, idx *indexState, snap types.Snapshot) []scoredHit {
 	var hits []scoredHit
 	idx.shard.IterateMemtable(snap, func(rowID types.RowID, id string, seq types.SeqNo, source []byte) bool {
 		var doc map[string]any
-		if jsonx.Unmarshal(source, &doc) != nil { return true }
+		if jsonx.Unmarshal(source, &doc) != nil {
+			return true
+		}
 		if _, ok := doc[q.Field]; ok {
 			hits = append(hits, scoredHit{rowID: uint32(rowID), score: float32(q.Boost), source: source, id: id})
 		}
@@ -1434,12 +1521,18 @@ func searchMemtableByNested(q *dsl.NestedQuery, idx *indexState, snap types.Snap
 	var hits []scoredHit
 	idx.shard.IterateMemtable(snap, func(rowID types.RowID, id string, seq types.SeqNo, source []byte) bool {
 		var doc map[string]any
-		if jsonx.Unmarshal(source, &doc) != nil { return true }
+		if jsonx.Unmarshal(source, &doc) != nil {
+			return true
+		}
 		// Extract the nested array from the document.
 		nestedVal, ok := doc[q.Path]
-		if !ok { return true }
+		if !ok {
+			return true
+		}
 		nestedArr, ok := nestedVal.([]any)
-		if !ok { return true }
+		if !ok {
+			return true
+		}
 		// Check if any nested element matches the inner query.
 		for _, elem := range nestedArr {
 			if elemMap, ok := elem.(map[string]any); ok {
@@ -1523,7 +1616,9 @@ func docMatchesQuery(q dsl.Query, doc map[string]any) bool {
 	case *dsl.MoreLikeThisQuery:
 		likeWords := strings.ToLower(strings.Join(typed.LikeTexts, " "))
 		fields := typed.Fields
-		if len(fields) == 0 { return true }
+		if len(fields) == 0 {
+			return true
+		}
 		for _, f := range fields {
 			if v, ok := doc[f]; ok {
 				if strings.Contains(strings.ToLower(fmt.Sprintf("%v", v)), likeWords) {
@@ -1534,7 +1629,9 @@ func docMatchesQuery(q dsl.Query, doc map[string]any) bool {
 		return false
 	case *dsl.SimpleQueryStringQuery:
 		fields := typed.Fields
-		if len(fields) == 0 { fields = []string{"_all"} }
+		if len(fields) == 0 {
+			fields = []string{"_all"}
+		}
 		for _, f := range fields {
 			if v, ok := doc[f]; ok {
 				for _, term := range strings.Fields(strings.ToLower(typed.Query)) {
@@ -1579,20 +1676,28 @@ func docMatchesQuery(q dsl.Query, doc map[string]any) bool {
 	case *dsl.TermsSetQuery:
 		if docVal, ok := doc[typed.Field]; ok {
 			valueSet := make(map[string]bool)
-			for _, v := range typed.Values { valueSet[fmt.Sprintf("%v", v)] = true }
+			for _, v := range typed.Values {
+				valueSet[fmt.Sprintf("%v", v)] = true
+			}
 			matched := 0
 			switch arr := docVal.(type) {
 			case []any:
 				for _, e := range arr {
-					if valueSet[fmt.Sprintf("%v", e)] { matched++ }
+					if valueSet[fmt.Sprintf("%v", e)] {
+						matched++
+					}
 				}
 			default:
-				if valueSet[fmt.Sprintf("%v", docVal)] { matched = 1 }
+				if valueSet[fmt.Sprintf("%v", docVal)] {
+					matched = 1
+				}
 			}
 			minMatch := 1
 			if typed.MinimumShouldMatchField != "" {
 				if minVal, ok := doc[typed.MinimumShouldMatchField]; ok {
-					if min, ok := minVal.(float64); ok { minMatch = int(min) }
+					if min, ok := minVal.(float64); ok {
+						minMatch = int(min)
+					}
 				}
 			}
 			return matched >= minMatch
@@ -1601,9 +1706,18 @@ func docMatchesQuery(q dsl.Query, doc map[string]any) bool {
 	case *dsl.MatchNoneQuery:
 		return false
 	case *dsl.ScriptQuery:
-		return true // simplified — actual evaluation in searchMemtableByScript
+		// Real script evaluation via the script engine (segment-path
+		// post-filter; memtable path handled in searchMemtableByScript).
+		scr, err := script.Parse(typed.Script)
+		if err != nil {
+			return false
+		}
+		return evalScriptBool(scr, doc, typed.Params, 0)
 	case *dsl.PercolateQuery:
-		return true // simplified — actual percolation in searchMemtableByPercolate
+		// Percolate hits come from the registered-query table (see
+		// searchMemtableByPercolate); ordinary indexed documents never
+		// match a percolate query on their own.
+		return false
 	case *dsl.GeoShapeQuery:
 		_, ok := doc[typed.Field]
 		return ok

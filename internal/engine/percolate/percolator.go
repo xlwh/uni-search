@@ -79,6 +79,13 @@ func (p *Percolator) Count() int {
 	return len(p.queries)
 }
 
+// Lookup returns the stored query DSL for one ID (nil when absent).
+func (p *Percolator) Lookup(queryID string) *StoredQuery {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.queries[queryID]
+}
+
 // queryMatchesDoc performs full DSL matching by parsing the query
 // JSON with the DSL parser and evaluating it against the document.
 // Supports: match, match_all, term, terms, range, exists, bool
@@ -86,8 +93,10 @@ func (p *Percolator) Count() int {
 // ids, fuzzy, knn, and sparse_vector queries.
 // @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#percolate
 func queryMatchesDoc(queryJSON []byte, doc map[string]any) bool {
-	// Parse the query JSON into a DSL AST.
-	q, _, _, err := dsl.ParseSearchBody(queryJSON)
+	// The stored query is a bare query object (e.g. {"term": {...}}),
+	// so parse it with ParseQuery — ParseSearchBody would only look
+	// for a top-level "query" key and always return nil here.
+	q, err := dsl.ParseQuery(queryJSON)
 	if err != nil || q == nil {
 		// Fall back to simple text matching if DSL parsing fails.
 		return simpleMatch(queryJSON, doc)

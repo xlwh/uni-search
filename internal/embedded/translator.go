@@ -181,14 +181,16 @@ func translateMatch(q *dsl.MatchQuery, idx *indexState, snap types.Snapshot, seg
 func translateKnn(q *dsl.KnnQuery, idx *indexState, snap types.Snapshot, segID uint64, entry *storage.SegmentEntry, from, size int) (plan.LogicalPlan, error) {
 	fid, fd, ok := idx.resolveField(q.Field)
 	if !ok {
-			// Field not in mapping — fall back to scan all and let
-	// postFilterHits filter by _source.
-	fid2, _, _ := idx.resolveField("_id")
-	if fid2 == 0 { fid2 = types.FieldID(1) }
-	return &plan.TopN{
-		Input: &plan.Scan{SegID: segID, Field: fid2, FieldType: "_id", Snapshot: snap},
-		From:  from, Size: size,
-	}, nil
+		// Field not in mapping — fall back to scan all and let
+		// postFilterHits filter by _source.
+		fid2, _, _ := idx.resolveField("_id")
+		if fid2 == 0 {
+			fid2 = types.FieldID(1)
+		}
+		return &plan.TopN{
+			Input: &plan.Scan{SegID: segID, Field: fid2, FieldType: "_id", Snapshot: snap},
+			From:  from, Size: size,
+		}, nil
 	}
 	if fd.Type != meta.TypeDenseVector {
 		return nil, fmt.Errorf("embedded: field %q is not dense_vector", q.Field)
@@ -228,14 +230,16 @@ func translateKnn(q *dsl.KnnQuery, idx *indexState, snap types.Snapshot, segID u
 func translateSparseVector(q *dsl.SparseVectorQuery, idx *indexState, snap types.Snapshot, segID uint64, entry *storage.SegmentEntry, from, size int) (plan.LogicalPlan, error) {
 	fid, fd, ok := idx.resolveField(q.Field)
 	if !ok {
-			// Field not in mapping — fall back to scan all and let
-	// postFilterHits filter by _source.
-	fid2, _, _ := idx.resolveField("_id")
-	if fid2 == 0 { fid2 = types.FieldID(1) }
-	return &plan.TopN{
-		Input: &plan.Scan{SegID: segID, Field: fid2, FieldType: "_id", Snapshot: snap},
-		From:  from, Size: size,
-	}, nil
+		// Field not in mapping — fall back to scan all and let
+		// postFilterHits filter by _source.
+		fid2, _, _ := idx.resolveField("_id")
+		if fid2 == 0 {
+			fid2 = types.FieldID(1)
+		}
+		return &plan.TopN{
+			Input: &plan.Scan{SegID: segID, Field: fid2, FieldType: "_id", Snapshot: snap},
+			From:  from, Size: size,
+		}, nil
 	}
 	if fd.Type != meta.TypeSparseVector {
 		return nil, fmt.Errorf("embedded: field %q is not sparse_vector", q.Field)
@@ -609,7 +613,9 @@ func translatePrefix(q *dsl.PrefixQuery, idx *indexState, snap types.Snapshot, s
 	// The postFilterHits stage checks _source using docMatchesQuery,
 	// which correctly handles prefix/regexp/geo/etc. matching.
 	fid, _, _ := idx.resolveField("_id")
-	if fid == 0 { fid = types.FieldID(1) }
+	if fid == 0 {
+		fid = types.FieldID(1)
+	}
 	return &plan.TopN{
 		Input: &plan.Scan{SegID: segID, Field: fid, FieldType: "_id", Snapshot: snap},
 		From:  from, Size: size,
@@ -620,7 +626,9 @@ func translateRegexp(q *dsl.RegexpQuery, idx *indexState, snap types.Snapshot, s
 	// The postFilterHits stage checks _source using docMatchesQuery,
 	// which correctly handles prefix/regexp/geo/etc. matching.
 	fid, _, _ := idx.resolveField("_id")
-	if fid == 0 { fid = types.FieldID(1) }
+	if fid == 0 {
+		fid = types.FieldID(1)
+	}
 	return &plan.TopN{
 		Input: &plan.Scan{SegID: segID, Field: fid, FieldType: "_id", Snapshot: snap},
 		From:  from, Size: size,
@@ -641,8 +649,10 @@ func translateFunctionScore(q *dsl.FunctionScoreQuery, idx *indexState, snap typ
 	}, nil
 }
 
-// translateScriptScore delegates to the inner query; the script is applied
-// in the memtable search stage.
+// translateScriptScore delegates to the inner query; the script
+// re-scoring (and min_score filtering) is applied to the merged hits
+// in Engine.Search so the memtable and segment paths share one
+// implementation.
 func translateScriptScore(q *dsl.ScriptScoreQuery, idx *indexState, snap types.Snapshot, segID uint64, entry *storage.SegmentEntry, from, size int) (plan.LogicalPlan, error) {
 	return translateForSegment(q.Query, idx, snap, segID, entry, from, size)
 }
@@ -655,7 +665,9 @@ func translateGeoDistance(q *dsl.GeoDistanceQuery, idx *indexState, snap types.S
 	// The postFilterHits stage checks _source using docMatchesQuery,
 	// which correctly handles prefix/regexp/geo/etc. matching.
 	fid, _, _ := idx.resolveField("_id")
-	if fid == 0 { fid = types.FieldID(1) }
+	if fid == 0 {
+		fid = types.FieldID(1)
+	}
 	return &plan.TopN{
 		Input: &plan.Scan{SegID: segID, Field: fid, FieldType: "_id", Snapshot: snap},
 		From:  from, Size: size,
@@ -666,7 +678,9 @@ func translateGeoBoundingBox(q *dsl.GeoBoundingBoxQuery, idx *indexState, snap t
 	// The postFilterHits stage checks _source using docMatchesQuery,
 	// which correctly handles prefix/regexp/geo/etc. matching.
 	fid, _, _ := idx.resolveField("_id")
-	if fid == 0 { fid = types.FieldID(1) }
+	if fid == 0 {
+		fid = types.FieldID(1)
+	}
 	return &plan.TopN{
 		Input: &plan.Scan{SegID: segID, Field: fid, FieldType: "_id", Snapshot: snap},
 		From:  from, Size: size,
@@ -675,7 +689,9 @@ func translateGeoBoundingBox(q *dsl.GeoBoundingBoxQuery, idx *indexState, snap t
 func translateMoreLikeThis(q *dsl.MoreLikeThisQuery, idx *indexState, snap types.Snapshot, segID uint64, entry *storage.SegmentEntry, from, size int) (plan.LogicalPlan, error) {
 	if len(q.LikeTexts) > 0 {
 		fields := q.Fields
-		if len(fields) == 0 { fields = []string{"_all"} }
+		if len(fields) == 0 {
+			fields = []string{"_all"}
+		}
 		matchQ := &dsl.MatchQuery{Field: fields[0], Text: q.LikeTexts[0], Operator: "or", Boost: q.Boost}
 		return translateMatch(matchQ, idx, snap, segID, entry, from, size)
 	}
@@ -684,7 +700,9 @@ func translateMoreLikeThis(q *dsl.MoreLikeThisQuery, idx *indexState, snap types
 
 func translateSimpleQueryString(q *dsl.SimpleQueryStringQuery, idx *indexState, snap types.Snapshot, segID uint64, entry *storage.SegmentEntry, from, size int) (plan.LogicalPlan, error) {
 	fields := q.Fields
-	if len(fields) == 0 { fields = []string{"_all"} }
+	if len(fields) == 0 {
+		fields = []string{"_all"}
+	}
 	matchQ := &dsl.MatchQuery{Field: fields[0], Text: q.Query, Operator: q.DefaultOperator, Boost: q.Boost}
 	return translateMatch(matchQ, idx, snap, segID, entry, from, size)
 }
@@ -711,7 +729,9 @@ func translateDistanceFeature(q *dsl.DistanceFeatureQuery, idx *indexState, snap
 	// The postFilterHits stage checks _source using docMatchesQuery,
 	// which correctly handles prefix/regexp/geo/etc. matching.
 	fid, _, _ := idx.resolveField("_id")
-	if fid == 0 { fid = types.FieldID(1) }
+	if fid == 0 {
+		fid = types.FieldID(1)
+	}
 	return &plan.TopN{
 		Input: &plan.Scan{SegID: segID, Field: fid, FieldType: "_id", Snapshot: snap},
 		From:  from, Size: size,
@@ -722,7 +742,9 @@ func translateRankFeature(q *dsl.RankFeatureQuery, idx *indexState, snap types.S
 	// The postFilterHits stage checks _source using docMatchesQuery,
 	// which correctly handles prefix/regexp/geo/etc. matching.
 	fid, _, _ := idx.resolveField("_id")
-	if fid == 0 { fid = types.FieldID(1) }
+	if fid == 0 {
+		fid = types.FieldID(1)
+	}
 	return &plan.TopN{
 		Input: &plan.Scan{SegID: segID, Field: fid, FieldType: "_id", Snapshot: snap},
 		From:  from, Size: size,
@@ -733,7 +755,9 @@ func translateTermsSet(q *dsl.TermsSetQuery, idx *indexState, snap types.Snapsho
 	// The postFilterHits stage checks _source using docMatchesQuery,
 	// which correctly handles prefix/regexp/geo/etc. matching.
 	fid, _, _ := idx.resolveField("_id")
-	if fid == 0 { fid = types.FieldID(1) }
+	if fid == 0 {
+		fid = types.FieldID(1)
+	}
 	return &plan.TopN{
 		Input: &plan.Scan{SegID: segID, Field: fid, FieldType: "_id", Snapshot: snap},
 		From:  from, Size: size,
@@ -741,19 +765,23 @@ func translateTermsSet(q *dsl.TermsSetQuery, idx *indexState, snap types.Snapsho
 }
 func translateScript(q *dsl.ScriptQuery, idx *indexState, snap types.Snapshot, segID uint64, entry *storage.SegmentEntry, from, size int) (plan.LogicalPlan, error) {
 	fid, _, _ := idx.resolveField("_id")
-	if fid == 0 { fid = types.FieldID(1) }
+	if fid == 0 {
+		fid = types.FieldID(1)
+	}
 	return &plan.TopN{
 		Input: &plan.Filter{Pred: q, Input: &plan.Scan{SegID: segID, Field: fid, FieldType: "_id", Snapshot: snap}},
-		From: from, Size: size,
+		From:  from, Size: size,
 	}, nil
 }
 
 func translatePercolate(q *dsl.PercolateQuery, idx *indexState, snap types.Snapshot, segID uint64, entry *storage.SegmentEntry, from, size int) (plan.LogicalPlan, error) {
 	fid, _, _ := idx.resolveField("_id")
-	if fid == 0 { fid = types.FieldID(1) }
+	if fid == 0 {
+		fid = types.FieldID(1)
+	}
 	return &plan.TopN{
 		Input: &plan.Filter{Pred: q, Input: &plan.Scan{SegID: segID, Field: fid, FieldType: "_id", Snapshot: snap}},
-		From: from, Size: size,
+		From:  from, Size: size,
 	}, nil
 }
 
@@ -762,7 +790,9 @@ func translateGeoShape(q *dsl.GeoShapeQuery, idx *indexState, snap types.Snapsho
 	// The postFilterHits stage checks _source using docMatchesQuery,
 	// which correctly handles prefix/regexp/geo/etc. matching.
 	fid, _, _ := idx.resolveField("_id")
-	if fid == 0 { fid = types.FieldID(1) }
+	if fid == 0 {
+		fid = types.FieldID(1)
+	}
 	return &plan.TopN{
 		Input: &plan.Scan{SegID: segID, Field: fid, FieldType: "_id", Snapshot: snap},
 		From:  from, Size: size,

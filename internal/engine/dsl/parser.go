@@ -3,8 +3,8 @@ package dsl
 import (
 	"bytes"
 	"encoding/base64"
-	"github.com/unisearch-db/unisearch/internal/jsonx"
 	"fmt"
+	"github.com/unisearch-db/unisearch/internal/jsonx"
 	"regexp"
 	"strconv"
 	"strings"
@@ -120,19 +120,20 @@ func ParseSearchBody(body []byte) (Query, int, int, error) {
 // @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.8
 // @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3
 type SearchExtras struct {
-	Aggs           jsonx.RawMessage
-	Highlight      jsonx.RawMessage
-	Sort           jsonx.RawMessage
-	PIT            jsonx.RawMessage
-	SearchAfter    jsonx.RawMessage
-	ScriptFields   jsonx.RawMessage // M1: script_fields for computed fields
-	TrackTotalHits jsonx.RawMessage // M1: false=skip count, int=cap
-	TerminateAfter int              // M1: row threshold for early termination (0=disabled)
-	Source         jsonx.RawMessage // M1: _source filtering (includes/excludes)
-	Rescore        jsonx.RawMessage // P0: rescore query specs
-	Collapse       jsonx.RawMessage // P0: collapse field + inner_hits
-	PostFilter     jsonx.RawMessage // P0: post-filter query
+	Aggs            jsonx.RawMessage
+	Highlight       jsonx.RawMessage
+	Sort            jsonx.RawMessage
+	PIT             jsonx.RawMessage
+	SearchAfter     jsonx.RawMessage
+	ScriptFields    jsonx.RawMessage // M1: script_fields for computed fields
+	TrackTotalHits  jsonx.RawMessage // M1: false=skip count, int=cap
+	TerminateAfter  int              // M1: row threshold for early termination (0=disabled)
+	Source          jsonx.RawMessage // M1: _source filtering (includes/excludes)
+	Rescore         jsonx.RawMessage // P0: rescore query specs
+	Collapse        jsonx.RawMessage // P0: collapse field + inner_hits
+	PostFilter      jsonx.RawMessage // P0: post-filter query
 	RuntimeMappings jsonx.RawMessage // P2: runtime field definitions
+	Suggest         jsonx.RawMessage // M1: suggester specs (term/phrase/completion)
 }
 
 // ParseSearchBodyFull parses a search body and returns the raw JSON
@@ -173,6 +174,8 @@ func ParseSearchBodyFull(body []byte) (q Query, from, size int, extras SearchExt
 			extras.PostFilter = vraw
 		case "runtime_mappings":
 			extras.RuntimeMappings = vraw
+		case "suggest":
+			extras.Suggest = vraw
 		case "terminate_after":
 			var n int
 			if jsonx.Unmarshal(vraw, &n) == nil && n > 0 {
@@ -326,9 +329,9 @@ var unsupportedQueries = map[string]struct {
 	milestone  string
 	workaround string
 }{
-	"wildcard":            {"v1.2 (M1)", "enumerate the matching terms client-side and use a terms query"},
-	"ids":                 {"v1.2 (M1)", "use a terms query on the _id field"},
-	"semantic":            {"v1.3 (M2)", "embed the text client-side and use match plus knn in a hybrid query"},
+	"wildcard": {"v1.2 (M1)", "enumerate the matching terms client-side and use a terms query"},
+	"ids":      {"v1.2 (M1)", "use a terms query on the _id field"},
+	"semantic": {"v1.3 (M2)", "embed the text client-side and use match plus knn in a hybrid query"},
 }
 
 // newUnsupportedQuery rejects a query type outside the M0 subset with the
@@ -1089,8 +1092,8 @@ func decodeVector(c *parseCtx, raw jsonx.RawMessage) ([]float32, error) {
 // parseSparseVectorQuery parses {"sparse_vector": {...}}. The clause body
 // follows the same dual layout as knn:
 //
-//   ES 8.x style: {"<field>": {"embedding": {"indices": [...], "values": [...]}, "boost": 1.0}}
-//   Flat style:   {"field": "<field>", "embedding": {"indices": [...], "values": [...]}, "boost": 1.0}
+//	ES 8.x style: {"<field>": {"embedding": {"indices": [...], "values": [...]}, "boost": 1.0}}
+//	Flat style:   {"field": "<field>", "embedding": {"indices": [...], "values": [...]}, "boost": 1.0}
 //
 // The embedding is a {dim: weight} map encoded as parallel "indices" and
 // "values" arrays (design 02 §5, same format as the document _source).
@@ -2082,12 +2085,12 @@ func parseGeoBoundingBoxQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) 
 		default:
 			q.Field = k
 			var box struct {
-				TopLeft    map[string]float64 `json:"top_left"`
+				TopLeft     map[string]float64 `json:"top_left"`
 				BottomRight map[string]float64 `json:"bottom_right"`
-				Top        float64             `json:"top"`
-				Left       float64             `json:"left"`
-				Bottom     float64             `json:"bottom"`
-				Right      float64             `json:"right"`
+				Top         float64            `json:"top"`
+				Left        float64            `json:"left"`
+				Bottom      float64            `json:"bottom"`
+				Right       float64            `json:"right"`
 			}
 			if jsonx.Unmarshal(vraw, &box) == nil {
 				if box.TopLeft != nil {
@@ -2162,29 +2165,43 @@ func parseMoreLikeThisQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 		switch k {
 		case "fields":
 			var fs []string
-			if jsonx.Unmarshal(vraw, &fs) == nil { q.Fields = fs }
+			if jsonx.Unmarshal(vraw, &fs) == nil {
+				q.Fields = fs
+			}
 		case "like":
 			var like []any
 			if jsonx.Unmarshal(vraw, &like) == nil {
 				for _, l := range like {
-					if s, ok := l.(string); ok { q.LikeTexts = append(q.LikeTexts, s) }
+					if s, ok := l.(string); ok {
+						q.LikeTexts = append(q.LikeTexts, s)
+					}
 				}
 			}
 		case "unlike":
 			var unlike []any
 			if jsonx.Unmarshal(vraw, &unlike) == nil {
 				for _, u := range unlike {
-					if s, ok := u.(string); ok { q.UnlikeTexts = append(q.UnlikeTexts, s) }
+					if s, ok := u.(string); ok {
+						q.UnlikeTexts = append(q.UnlikeTexts, s)
+					}
 				}
 			}
 		case "min_term_freq":
-			if q.MinTermFreq, err = decodeInt(nodeCtx.key("min_term_freq"), vraw); err != nil { return nil, err }
+			if q.MinTermFreq, err = decodeInt(nodeCtx.key("min_term_freq"), vraw); err != nil {
+				return nil, err
+			}
 		case "max_query_terms":
-			if q.MaxQueryTerms, err = decodeInt(nodeCtx.key("max_query_terms"), vraw); err != nil { return nil, err }
+			if q.MaxQueryTerms, err = decodeInt(nodeCtx.key("max_query_terms"), vraw); err != nil {
+				return nil, err
+			}
 		case "min_doc_freq":
-			if q.MinDocFreq, err = decodeInt(nodeCtx.key("min_doc_freq"), vraw); err != nil { return nil, err }
+			if q.MinDocFreq, err = decodeInt(nodeCtx.key("min_doc_freq"), vraw); err != nil {
+				return nil, err
+			}
 		case "boost":
-			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(nodeCtx.key(k), "[more_like_this] unknown parameter [%s]", k)
 		}
@@ -2205,14 +2222,22 @@ func parseSimpleQueryStringQuery(c *parseCtx, raw jsonx.RawMessage) (Query, erro
 	for k, vraw := range m {
 		switch k {
 		case "query":
-			if q.Query, err = decodeString(nodeCtx.key("query"), vraw); err != nil { return nil, err }
+			if q.Query, err = decodeString(nodeCtx.key("query"), vraw); err != nil {
+				return nil, err
+			}
 		case "fields":
 			var fs []string
-			if jsonx.Unmarshal(vraw, &fs) == nil { q.Fields = fs }
+			if jsonx.Unmarshal(vraw, &fs) == nil {
+				q.Fields = fs
+			}
 		case "default_operator":
-			if q.DefaultOperator, err = decodeString(nodeCtx.key("default_operator"), vraw); err != nil { return nil, err }
+			if q.DefaultOperator, err = decodeString(nodeCtx.key("default_operator"), vraw); err != nil {
+				return nil, err
+			}
 		case "boost":
-			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(nodeCtx.key(k), "[simple_query_string] unknown parameter [%s]", k)
 		}
@@ -2233,14 +2258,22 @@ func parseCombinedFieldsQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) 
 	for k, vraw := range m {
 		switch k {
 		case "query":
-			if q.Query, err = decodeString(nodeCtx.key("query"), vraw); err != nil { return nil, err }
+			if q.Query, err = decodeString(nodeCtx.key("query"), vraw); err != nil {
+				return nil, err
+			}
 		case "fields":
 			var fs []string
-			if jsonx.Unmarshal(vraw, &fs) == nil { q.Fields = fs }
+			if jsonx.Unmarshal(vraw, &fs) == nil {
+				q.Fields = fs
+			}
 		case "operator":
-			if q.Operator, err = decodeString(nodeCtx.key("operator"), vraw); err != nil { return nil, err }
+			if q.Operator, err = decodeString(nodeCtx.key("operator"), vraw); err != nil {
+				return nil, err
+			}
 		case "boost":
-			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(nodeCtx.key(k), "[combined_fields] unknown parameter [%s]", k)
 		}
@@ -2264,17 +2297,25 @@ func parseMatchBoolPrefixQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error)
 	fctx := nodeCtx.key(field)
 	q := &MatchBoolPrefixQuery{Field: field, Boost: DefaultBoost}
 	if firstByte(fraw) != '{' {
-		if q.Query, err = decodeString(fctx, fraw); err != nil { return nil, err }
+		if q.Query, err = decodeString(fctx, fraw); err != nil {
+			return nil, err
+		}
 		return q, nil
 	}
 	obj, err := decodeObject(fctx, fraw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	for k, vraw := range obj {
 		switch k {
 		case "query":
-			if q.Query, err = decodeString(fctx.key("query"), vraw); err != nil { return nil, err }
+			if q.Query, err = decodeString(fctx.key("query"), vraw); err != nil {
+				return nil, err
+			}
 		case "boost":
-			if q.Boost, err = decodeFloat(fctx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(fctx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(fctx.key(k), "[match_bool_prefix] unknown parameter [%s]", k)
 		}
@@ -2292,82 +2333,114 @@ func parseMatchBoolPrefixQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error)
 func parseDistanceFeatureQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 	nodeCtx := c.key("distance_feature")
 	m, err := decodeObject(nodeCtx, raw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	q := &DistanceFeatureQuery{Boost: DefaultBoost}
 	for k, vraw := range m {
 		switch k {
 		case "field":
-			if q.Field, err = decodeString(nodeCtx.key("field"), vraw); err != nil { return nil, err }
+			if q.Field, err = decodeString(nodeCtx.key("field"), vraw); err != nil {
+				return nil, err
+			}
 		case "origin":
 			jsonx.Unmarshal(vraw, &q.Origin)
 		case "pivot":
 			jsonx.Unmarshal(vraw, &q.Pivot)
 		case "boost":
-			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(nodeCtx.key(k), "[distance_feature] unknown parameter [%s]", k)
 		}
 	}
-	if q.Field == "" { return nil, illegalAt(nodeCtx, "[distance_feature] requires [field]") }
+	if q.Field == "" {
+		return nil, illegalAt(nodeCtx, "[distance_feature] requires [field]")
+	}
 	return q, nil
 }
 
 func parseRankFeatureQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 	nodeCtx := c.key("rank_feature")
 	m, err := decodeObject(nodeCtx, raw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	q := &RankFeatureQuery{Boost: DefaultBoost, Positive: 1.0}
 	for k, vraw := range m {
 		switch k {
 		case "field":
-			if q.Field, err = decodeString(nodeCtx.key("field"), vraw); err != nil { return nil, err }
+			if q.Field, err = decodeString(nodeCtx.key("field"), vraw); err != nil {
+				return nil, err
+			}
 		case "positive":
-			if q.Positive, err = decodeFloat(nodeCtx.key("positive"), vraw); err != nil { return nil, err }
+			if q.Positive, err = decodeFloat(nodeCtx.key("positive"), vraw); err != nil {
+				return nil, err
+			}
 		case "negative":
-			if q.Negative, err = decodeFloat(nodeCtx.key("negative"), vraw); err != nil { return nil, err }
+			if q.Negative, err = decodeFloat(nodeCtx.key("negative"), vraw); err != nil {
+				return nil, err
+			}
 		case "boost":
-			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(nodeCtx.key(k), "[rank_feature] unknown parameter [%s]", k)
 		}
 	}
-	if q.Field == "" { return nil, illegalAt(nodeCtx, "[rank_feature] requires [field]") }
+	if q.Field == "" {
+		return nil, illegalAt(nodeCtx, "[rank_feature] requires [field]")
+	}
 	return q, nil
 }
 
 func parseWrapperQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 	nodeCtx := c.key("wrapper")
 	m, err := decodeObject(nodeCtx, raw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	var encoded string
 	for k, vraw := range m {
 		switch k {
 		case "query":
-			if encoded, err = decodeString(nodeCtx.key("query"), vraw); err != nil { return nil, err }
+			if encoded, err = decodeString(nodeCtx.key("query"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(nodeCtx.key(k), "[wrapper] unknown parameter [%s]", k)
 		}
 	}
-	if encoded == "" { return nil, illegalAt(nodeCtx, "[wrapper] requires [query]") }
+	if encoded == "" {
+		return nil, illegalAt(nodeCtx, "[wrapper] requires [query]")
+	}
 	decoded, derr := base64.StdEncoding.DecodeString(encoded)
 	if derr != nil {
 		return nil, illegalAt(nodeCtx, "[wrapper] invalid base64: %v", derr)
 	}
 	inner, perr := parseQueryRaw(nodeCtx, decoded)
-	if perr != nil { return nil, perr }
+	if perr != nil {
+		return nil, perr
+	}
 	return &WrapperQuery{Query: encoded, Inner: inner}, nil
 }
 
 func parsePinnedQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 	nodeCtx := c.key("pinned")
 	m, err := decodeObject(nodeCtx, raw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	q := &PinnedQuery{Boost: DefaultBoost}
 	for k, vraw := range m {
 		switch k {
 		case "organic":
 			inner, err := parseQueryRaw(nodeCtx.key("organic"), vraw)
-			if err != nil { return nil, err }
+			if err != nil {
+				return nil, err
+			}
 			q.Organic = inner
 		case "pinned":
 			var arr []struct {
@@ -2380,7 +2453,9 @@ func parsePinnedQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 				}
 			}
 		case "boost":
-			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(nodeCtx.key(k), "[pinned] unknown parameter [%s]", k)
 		}
@@ -2394,9 +2469,13 @@ func parsePinnedQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 func parseTermsSetQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 	nodeCtx := c.key("terms_set")
 	m, err := decodeObject(nodeCtx, raw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	field, fraw, err := singleField(nodeCtx, "terms_set", m)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	q := &TermsSetQuery{Field: field, Boost: DefaultBoost}
 	var obj map[string]jsonx.RawMessage
 	if jsonx.Unmarshal(fraw, &obj) == nil {
@@ -2405,9 +2484,13 @@ func parseTermsSetQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 			case "terms":
 				jsonx.Unmarshal(vraw, &q.Values)
 			case "minimum_should_match_field":
-				if q.MinimumShouldMatchField, err = decodeString(nodeCtx.key("minimum_should_match_field"), vraw); err != nil { return nil, err }
+				if q.MinimumShouldMatchField, err = decodeString(nodeCtx.key("minimum_should_match_field"), vraw); err != nil {
+					return nil, err
+				}
 			case "boost":
-				if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+				if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+					return nil, err
+				}
 			default:
 				return nil, illegalAt(nodeCtx.key(k), "[terms_set] unknown parameter [%s]", k)
 			}
@@ -2429,16 +2512,36 @@ func parseTermsSetQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 func parseScriptQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 	nodeCtx := c.key("script")
 	m, err := decodeObject(nodeCtx, raw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
+	// ES 8.x nests the script source one level down
+	// ({"script": {"script": {"source": ...}}}); accept both that and
+	// the flat {"script": {"source": ...}} form.
+	if inner, ok := m["script"]; ok {
+		var innerObj map[string]jsonx.RawMessage
+		if jsonx.Unmarshal(inner, &innerObj) == nil && innerObj != nil {
+			delete(m, "script")
+			for k, v := range innerObj {
+				if _, dup := m[k]; !dup {
+					m[k] = v
+				}
+			}
+		}
+	}
 	q := &ScriptQuery{Boost: DefaultBoost}
 	for k, vraw := range m {
 		switch k {
 		case "source":
-			if q.Script, err = decodeString(nodeCtx.key("source"), vraw); err != nil { return nil, err }
+			if q.Script, err = decodeString(nodeCtx.key("source"), vraw); err != nil {
+				return nil, err
+			}
 		case "params":
 			jsonx.Unmarshal(vraw, &q.Params)
 		case "boost":
-			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(nodeCtx.key(k), "[script] unknown parameter [%s]", k)
 		}
@@ -2452,20 +2555,30 @@ func parseScriptQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 func parsePercolateQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 	nodeCtx := c.key("percolate")
 	m, err := decodeObject(nodeCtx, raw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	q := &PercolateQuery{Boost: DefaultBoost}
 	for k, vraw := range m {
 		switch k {
 		case "field":
-			if q.Field, err = decodeString(nodeCtx.key("field"), vraw); err != nil { return nil, err }
+			if q.Field, err = decodeString(nodeCtx.key("field"), vraw); err != nil {
+				return nil, err
+			}
 		case "document":
 			jsonx.Unmarshal(vraw, &q.Document)
 		case "document_id":
-			if q.DocumentID, err = decodeString(nodeCtx.key("document_id"), vraw); err != nil { return nil, err }
+			if q.DocumentID, err = decodeString(nodeCtx.key("document_id"), vraw); err != nil {
+				return nil, err
+			}
 		case "index":
-			if q.Index, err = decodeString(nodeCtx.key("index"), vraw); err != nil { return nil, err }
+			if q.Index, err = decodeString(nodeCtx.key("index"), vraw); err != nil {
+				return nil, err
+			}
 		case "boost":
-			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(nodeCtx.key(k), "[percolate] unknown parameter [%s]", k)
 		}
@@ -2479,14 +2592,20 @@ func parsePercolateQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 func parseGeoShapeQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 	nodeCtx := c.key("geo_shape")
 	m, err := decodeObject(nodeCtx, raw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	q := &GeoShapeQuery{Boost: DefaultBoost, Relation: "intersects"}
 	for k, vraw := range m {
 		switch k {
 		case "boost":
-			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		case "relation":
-			if q.Relation, err = decodeString(nodeCtx.key("relation"), vraw); err != nil { return nil, err }
+			if q.Relation, err = decodeString(nodeCtx.key("relation"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			q.Field = k
 			jsonx.Unmarshal(vraw, &q.Shape)
@@ -2501,9 +2620,13 @@ func parseGeoShapeQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 func parseIntervalsQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 	nodeCtx := c.key("intervals")
 	m, err := decodeObject(nodeCtx, raw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	field, fraw, err := singleField(nodeCtx, "intervals", m)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	q := &IntervalsQuery{Field: field, Boost: DefaultBoost, Rules: make(map[string]any)}
 	var ruleMap map[string]jsonx.RawMessage
 	if jsonx.Unmarshal(fraw, &ruleMap) == nil {
@@ -2520,20 +2643,30 @@ func parseIntervalsQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 func parseNestedQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 	nodeCtx := c.key("nested")
 	m, err := decodeObject(nodeCtx, raw)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	q := &NestedQuery{Boost: DefaultBoost, ScoreMode: "avg"}
 	for k, vraw := range m {
 		switch k {
 		case "path":
-			if q.Path, err = decodeString(nodeCtx.key("path"), vraw); err != nil { return nil, err }
+			if q.Path, err = decodeString(nodeCtx.key("path"), vraw); err != nil {
+				return nil, err
+			}
 		case "query":
 			inner, err := parseQueryRaw(nodeCtx.key("query"), vraw)
-			if err != nil { return nil, err }
+			if err != nil {
+				return nil, err
+			}
 			q.Query = inner
 		case "score_mode":
-			if q.ScoreMode, err = decodeString(nodeCtx.key("score_mode"), vraw); err != nil { return nil, err }
+			if q.ScoreMode, err = decodeString(nodeCtx.key("score_mode"), vraw); err != nil {
+				return nil, err
+			}
 		case "boost":
-			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil { return nil, err }
+			if q.Boost, err = decodeFloat(nodeCtx.key("boost"), vraw); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, illegalAt(nodeCtx.key(k), "[nested] unknown parameter [%s]", k)
 		}

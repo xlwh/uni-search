@@ -45,6 +45,12 @@ type Config struct {
 	// SegmentCountThreshold triggers an adjacent-tier merge when the
 	// shard exceeds this many segments (10 default).
 	SegmentCountThreshold int
+	// F4: TTL interval (parsed from IndexSettings.TTL). When non-zero,
+	// segments whose MaxTimestamp is older than now - TTLInterval are
+	// prioritized for merge. @spec: 02_spec.md#5.4
+	TTLInterval time.Duration
+	// F4: TTL column name (e.g. "@timestamp"). Empty = no TTL.
+	TTLColumn string
 }
 
 // NewConfig returns cfg with zero fields replaced by the design §7.1
@@ -143,6 +149,21 @@ func (s *Scheduler) pickCandidates() []types.SegmentID {
 	segs := s.shard.ListMergeCandidates()
 	if len(segs) < 2 {
 		return nil
+	}
+
+	// F4 Rule 0: TTL-expired segments merge first. @spec: 02_spec.md#5.4
+	if s.cfg.TTLInterval > 0 && s.cfg.TTLColumn != "" {
+		now := time.Now().UnixMilli()
+		threshold := now - s.cfg.TTLInterval.Milliseconds()
+		var ttlHot []storage.SegmentStats
+		for _, st := range segs {
+			if st.MaxTimestamp > 0 && st.MaxTimestamp < threshold {
+				ttlHot = append(ttlHot, st)
+			}
+		}
+		if len(ttlHot) >= 2 {
+			return topNByBytes(ttlHot, len(ttlHot))
+		}
 	}
 
 	// Rule 1: collect segments with delete rate > threshold.

@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package unisearch;
+
+option go_package = "github.com/unisearch-db/unisearch/api/proto;unisearchpb";
+
+service MetaService {
+  rpc Apply(MetaCommand) returns (ApplyResult);
+  rpc Watch(WatchRequest) returns (stream MetaEvent);
+  rpc Heartbeat(NodeInfo) returns (HeartbeatAck);
+}
+
+message MetaCommand {
+  uint32 cmd_type = 1;  // FSMCmdType enum
+  bytes payload = 2;     // JSON-encoded command-specific data
+}
+
+message ApplyResult {
+  bool success = 1;
+  string error = 2;
+  uint64 version = 3;    // FSM version after apply
+}
+
+message WatchRequest {
+  repeated string filter = 1;  // event type filters (empty = all)
+}
+
+message MetaEvent {
+  string type = 1;   // "route_change" | "watermark" | "member_change"
+  bytes payload = 2;  // JSON-encoded event data
+}
+
+message NodeInfo {
+  string id = 1;
+  string addr = 2;
+  string role = 3;    // "meta" | "coordinator" | "shard"
+  int64 last_seen = 4;
+  ResourceReport resources = 5;
+}
+
+message ResourceReport {
+  double cpu_usage_pct = 1;
+  double mem_usage_pct = 2;
+  double disk_usage_pct = 3;
+  double io_usage_pct = 4;
+}
+
+message HeartbeatAck {
+  bool acknowledged = 1;
+  string leader_addr = 2;
+}

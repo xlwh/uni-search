@@ -60,6 +60,7 @@ type MemTable struct {
 	active  *Table
 	frozen  []*Table // oldest first; Append keeps len(frozen) < cfg.MaxFrozen
 	visible types.SeqNo
+	dedup   *DedupWindow // @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.2.1
 }
 
 // New creates an empty MemTable for the given shard.
@@ -68,6 +69,7 @@ func New(shardID types.ShardID, cfg Config) *MemTable {
 		shardID: shardID,
 		cfg:     cfg.withDefaults(),
 		active:  newTable(),
+		dedup:   NewDedupWindow(1_000_000),
 	}
 }
 
@@ -95,6 +97,11 @@ func (m *MemTable) AppendBatch(rows ...Row) error {
 		return errFrozenFull(m.shardID, len(m.frozen))
 	}
 	for i := range rows {
+		// Idempotent dedup: skip if (ClientID, Sequence) already seen.
+		// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.2.1
+		if rows[i].ClientID != "" && m.dedup.IsDuplicate(rows[i].ClientID, rows[i].Sequence) {
+			continue
+		}
 		m.maybeFreezeLocked()
 		if err := m.active.appendRow(&rows[i]); err != nil {
 			return err

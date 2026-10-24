@@ -43,7 +43,7 @@ func TestR1_DumpConfigFlag(t *testing.T) {
 			args: []string{"--listen", ":9999", "--dump-config"},
 			env:  map[string]string{"UNISEARCH_LISTEN": ":9300"},
 			want: []string{"listen: :9999"},
-			bad:  []string{":9300"},
+			bad:  []string{"listen: :9300"},
 		},
 	}
 

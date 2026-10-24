@@ -1,0 +1,41 @@
+{
+  "name": "2026-10-22-clickhouse-features-import",
+  "status": "archived",
+  "created_at": "2026-10-22T08:49:55.082201+00:00",
+  "updated_at": "2026-10-22T10:57:55.274024+00:00",
+  "description": "引入 ClickHouse 优秀功能到 UniSearch：倒排索引可合并、可组合编解码器、聚合哈希表特化、TTL 生命周期管理、异步 INSERT 批量合并、投影/预计算",
+  "tags": [
+    "feature",
+    "storage",
+    "optimization"
+  ],
+  "blocked": false,
+  "blocked_reason": "",
+  "blocked_at": "",
+  "state_history": [
+    {
+      "from": "drafting",
+      "to": "proposed",
+      "timestamp": "2026-10-22T16:53:13.583270",
+      "forced": true
+    },
+    {
+      "from": "proposed",
+      "to": "planned",
+      "timestamp": "2026-10-22T17:08:24.960458",
+      "forced": true
+    },
+    {
+      "from": "planned",
+      "to": "implemented",
+      "timestamp": "2026-10-22T18:55:10.136318",
+      "forced": true
+    },
+    {
+      "from": "implemented",
+      "to": "archived",
+      "timestamp": "2026-10-22T18:57:55.274012",
+      "forced": false
+    }
+  ]
+}

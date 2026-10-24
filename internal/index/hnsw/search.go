@@ -86,6 +86,14 @@ func (g *Graph) Search(ctx context.Context, q []float32, k int, ef int, filter f
 	if sq := g.sq.Load(); sq != nil {
 		return g.searchQuantized(sq, st, q, k, ef, filter, budget)
 	}
+	// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.3.5
+	if pq := g.pq.Load(); pq != nil {
+		return g.searchPQ(pq, st, q, k, ef, filter, budget)
+	}
+	// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.3.4
+	if rb := g.rb.Load(); rb != nil {
+		return g.searchRaBitQ(rb, st, q, k, ef, filter, budget)
+	}
 	return g.searchExact(st, q, k, ef, filter, budget)
 }
 
@@ -154,6 +162,9 @@ func (g *Graph) MemBytes() int64 {
 	m := int64(cap(g.neighbors)+cap(g.offsets))*4 + int64(cap(g.levels)) + int64(cap(g.vecs))*4
 	if sq := g.sq.Load(); sq != nil {
 		m += sq.MemBytes()
+	}
+	if pq := g.pq.Load(); pq != nil {
+		m += pq.MemBytes()
 	}
 	return m
 }

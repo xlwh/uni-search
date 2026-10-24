@@ -76,9 +76,17 @@ func (ix *Index) Build(ctx context.Context, col index.ColumnProvider, w index.In
 		return err
 	}
 	if i != n {
-		return fmt.Errorf("hnsw: column yielded %d vectors, header says %d", i, n)
+		// Sparse vectors: not all rows have embeddings. Build the graph
+		// with only the rows that have vectors (i vectors, not n).
+		n = i
+		vecs = vecs[:n*dims]
 	}
-	g, err := BuildGraph(ix.cfg, n, dims, vecs)
+	var g *Graph
+	if ix.cfg.BuildMode == BuildModeODescent {
+		g, err = BuildGraphODesc(ix.cfg, n, dims, vecs)
+	} else {
+		g, err = BuildGraph(ix.cfg, n, dims, vecs)
+	}
 	if err != nil {
 		return err
 	}
@@ -166,8 +174,11 @@ func (ix *Index) Quantize(ctx context.Context, to index.QuantLevel) error {
 	switch to {
 	case index.QuantSQ8:
 		return ix.g.EnableSQ8()
+	case index.QuantPQ:
+		return ix.g.EnablePQ(0) // auto-select M
 	case index.QuantNone:
 		ix.g.DisableSQ8()
+		ix.g.DisablePQ()
 		return nil
 	default:
 		return fmt.Errorf("%w: quant level %d", index.ErrUnsupported, to)
@@ -310,9 +321,15 @@ func writeGraphFiles(w index.IndexOutput, g *Graph) error {
 		return fmt.Errorf("hnsw: create %s: %w", fileQuant, err)
 	}
 	sq := g.sq.Load()
+	rb := g.rb.Load()
+	pq := g.pq.Load()
 	var tier int8
 	if sq != nil {
 		tier = 1
+	} else if rb != nil {
+		tier = 2
+	} else if pq != nil {
+		tier = 3
 	}
 	if err := binary.Write(f, binary.LittleEndian, tier); err != nil {
 		f.Close()
@@ -326,6 +343,48 @@ func writeGraphFiles(w index.IndexOutput, g *Graph) error {
 				f.Close()
 				return fmt.Errorf("hnsw: write quant state: %w", err)
 			}
+		}
+	} else if rb != nil {
+		// RaBitQ serialization (tier=2): flat projection matrix + flat codes.
+		// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#5.1
+		for _, v := range []any{
+			int32(rb.nBits), int32(rb.nBytes),
+		} {
+			if err := binary.Write(f, binary.LittleEndian, v); err != nil {
+				f.Close()
+				return fmt.Errorf("hnsw: write rabitq header: %w", err)
+			}
+		}
+		if err := binary.Write(f, binary.LittleEndian, rb.quantizer.proj); err != nil {
+			f.Close()
+			return fmt.Errorf("hnsw: write rabitq proj: %w", err)
+		}
+		if err := binary.Write(f, binary.LittleEndian, rb.codesFlat); err != nil {
+			f.Close()
+			return fmt.Errorf("hnsw: write rabitq codes: %w", err)
+		}
+		if err := binary.Write(f, binary.LittleEndian, rb.codeOffsets); err != nil {
+			f.Close()
+			return fmt.Errorf("hnsw: write rabitq offsets: %w", err)
+		}
+	} else if pq != nil {
+		// PQ serialization (tier=3): centroids + codes.
+		// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#5.1
+		for _, v := range []any{
+			int32(pq.n), int32(pq.dims), int32(pq.m), int32(pq.dsub),
+		} {
+			if err := binary.Write(f, binary.LittleEndian, v); err != nil {
+				f.Close()
+				return fmt.Errorf("hnsw: write pq header: %w", err)
+			}
+		}
+		if err := binary.Write(f, binary.LittleEndian, pq.centroids); err != nil {
+			f.Close()
+			return fmt.Errorf("hnsw: write pq centroids: %w", err)
+		}
+		if err := binary.Write(f, binary.LittleEndian, pq.codes); err != nil {
+			f.Close()
+			return fmt.Errorf("hnsw: write pq codes: %w", err)
 		}
 	}
 	if err := f.Close(); err != nil {
@@ -455,6 +514,76 @@ func readGraphFiles(r index.IndexInput) (*Graph, error) {
 			return nil, fmt.Errorf("hnsw: read quant codes: %w", err)
 		}
 		g.sq.Store(sq)
+	} else if tier == 2 {
+		// RaBitQ deserialization (tier=2): flat projection matrix + flat codes.
+		// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#5.1
+		var rBits, rBytes int32
+		if err := binary.Read(fq, binary.LittleEndian, &rBits); err != nil {
+			return nil, fmt.Errorf("hnsw: read rabitq nBits: %w", err)
+		}
+		if err := binary.Read(fq, binary.LittleEndian, &rBytes); err != nil {
+			return nil, fmt.Errorf("hnsw: read rabitq nBytes: %w", err)
+		}
+		if int(rBits) != int(dims) {
+			return nil, fmt.Errorf("hnsw: rabitq nBits %d mismatches dims %d", rBits, dims)
+		}
+		// Reconstruct quantizer with flat projection matrix.
+		rq := &RaBitQuantizer{
+			dim:   int(dims),
+			nBits: int(rBits),
+			proj:  make([]float32, int(dims)*int(rBits)),
+		}
+		if err := binary.Read(fq, binary.LittleEndian, rq.proj); err != nil {
+			return nil, fmt.Errorf("hnsw: read rabitq proj: %w", err)
+		}
+		rb := &RaBitQState{
+			quantizer:   rq,
+			nBits:       int(rBits),
+			nBytes:      int(rBytes),
+			codesFlat:   make([]byte, int(n)*int(rBytes)),
+			codeOffsets: make([]int32, int(n)),
+		}
+		if err := binary.Read(fq, binary.LittleEndian, rb.codesFlat); err != nil {
+			return nil, fmt.Errorf("hnsw: read rabitq codes: %w", err)
+		}
+		if err := binary.Read(fq, binary.LittleEndian, rb.codeOffsets); err != nil {
+			return nil, fmt.Errorf("hnsw: read rabitq offsets: %w", err)
+		}
+		g.rb.Store(rb)
+	} else if tier == 3 {
+		// PQ deserialization (tier=3): centroids + codes.
+		// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#5.1
+		var pqN, pqDims, pqM, pqDsub int32
+		if err := binary.Read(fq, binary.LittleEndian, &pqN); err != nil {
+			return nil, fmt.Errorf("hnsw: read pq n: %w", err)
+		}
+		if err := binary.Read(fq, binary.LittleEndian, &pqDims); err != nil {
+			return nil, fmt.Errorf("hnsw: read pq dims: %w", err)
+		}
+		if err := binary.Read(fq, binary.LittleEndian, &pqM); err != nil {
+			return nil, fmt.Errorf("hnsw: read pq m: %w", err)
+		}
+		if err := binary.Read(fq, binary.LittleEndian, &pqDsub); err != nil {
+			return nil, fmt.Errorf("hnsw: read pq dsub: %w", err)
+		}
+		if pqN != n || pqDims != dims {
+			return nil, fmt.Errorf("hnsw: pq shape (%d,%d) mismatches graph (%d,%d)", pqN, pqDims, n, dims)
+		}
+		pq := &PQState{
+			n:         int(pqN),
+			dims:      int(pqDims),
+			m:         int(pqM),
+			dsub:      int(pqDsub),
+			centroids: make([]float32, int(pqM)*256*int(pqDsub)),
+			codes:     make([]byte, int(pqN)*int(pqM)),
+		}
+		if err := binary.Read(fq, binary.LittleEndian, pq.centroids); err != nil {
+			return nil, fmt.Errorf("hnsw: read pq centroids: %w", err)
+		}
+		if err := binary.Read(fq, binary.LittleEndian, pq.codes); err != nil {
+			return nil, fmt.Errorf("hnsw: read pq codes: %w", err)
+		}
+		g.pq.Store(pq)
 	}
 	return g, nil
 }

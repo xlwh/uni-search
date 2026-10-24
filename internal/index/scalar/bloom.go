@@ -32,6 +32,60 @@ type Bloom struct {
 	n    uint32   // values inserted (stats)
 }
 
+// BlockBloom holds one Bloom filter per storage block (design 02 §6.4:
+// "每 Block 一个 bloom，1024 条目，fpp 1%"). Block-level bloom enables
+// scan-time pre-filtering: a block whose bloom says "definitely absent"
+// for the query value is skipped entirely, avoiding block decode.
+// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.3.7
+type BlockBloom struct {
+	blooms []*Bloom  // one per block
+	blockN int       // entries per block (default 1024)
+}
+
+// NewBlockBloom creates a block-level bloom filter with the given number
+// of blocks, each sized for blockN entries at the given fpp.
+func NewBlockBloom(numBlocks, blockN int, fpp float64) *BlockBloom {
+	if blockN <= 0 {
+		blockN = 1024
+	}
+	blooms := make([]*Bloom, numBlocks)
+	for i := range blooms {
+		blooms[i] = newBloom(blockN, fpp)
+	}
+	return &BlockBloom{blooms: blooms, blockN: blockN}
+}
+
+// AddToBlock inserts a value into the specified block's bloom.
+func (bb *BlockBloom) AddToBlock(blockIdx int, v []byte) {
+	if blockIdx >= 0 && blockIdx < len(bb.blooms) {
+		bb.blooms[blockIdx].Add(v)
+	}
+}
+
+// MightContainInBlock checks whether v may be present in the specified
+// block. Returns false (definitely absent) or true (probably present).
+func (bb *BlockBloom) MightContainInBlock(blockIdx int, v []byte) bool {
+	if blockIdx < 0 || blockIdx >= len(bb.blooms) {
+		return true // out of range: conservatively return true
+	}
+	return bb.blooms[blockIdx].MightContain(v)
+}
+
+// BlockCount returns the number of blocks.
+func (bb *BlockBloom) BlockCount() int { return len(bb.blooms) }
+
+// BlockSize returns the entries-per-block sizing.
+func (bb *BlockBloom) BlockSize() int { return bb.blockN }
+
+// MemBytes reports the total resident size for MemEstimate.
+func (bb *BlockBloom) MemBytes() int64 {
+	var total int64
+	for _, b := range bb.blooms {
+		total += b.MemBytes()
+	}
+	return total
+}
+
 // newBloom sizes a filter for n entries at the given fpp using the
 // standard optimal m/k: m = -n·ln(p)/(ln2)^2, k = (m/n)·ln2, both
 // clamped to sane floors.

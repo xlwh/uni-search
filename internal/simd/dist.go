@@ -47,3 +47,43 @@ var L2F32 func(a, b []float32) float32
 //     pure Go binding reuses the very same inner loop, so its results are
 //     bit-identical to the individual calls).
 var DotF32Batch16 func(q []float32, cands []float32, dims int, out []float32)
+
+// DotI8F32 computes the dot product of a float32 query against an int8
+// code row decoded as unsigned uint8 levels (the SQ8 distance kernel,
+// §2.5). The caller pre-scales the query per dimension so that the
+// decoded dot product reconstructs the original float32 dot product
+// up to the SQ8 quantization error.
+//
+// Contract, enforced by every implementation bound to this pointer:
+//   - Panics when len(q) != len(code).
+//   - Empty vectors yield 0.
+//
+// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.1.2
+var DotI8F32 func(q []float32, code []int8) float32
+
+// HammingDistanceBatch computes Hamming distances between a query
+// bitmap and multiple candidate bitmaps. codesFlat is a contiguous
+// byte array holding all candidate bitmaps back-to-back; codeOffsets
+// gives the start byte offset of each candidate's bitmap (nBytes per
+// bitmap, where nBytes = len(qBits)). out[i] receives the Hamming
+// distance for the candidate identified by ids[i].
+//
+// Contract:
+//   - len(qBits) must be > 0 and equal for every candidate.
+//   - len(out) >= len(ids).
+//   - Each codeOffsets[id] must be a valid offset into codesFlat with
+//     at least len(qBits) bytes remaining.
+//
+// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.1.2
+var HammingDistanceBatch func(qBits []byte, codesFlat []byte, codeOffsets []int32, ids []int32, out []int)
+
+// DotF16F32 computes the dot product of a float32 query against a
+// float16 (half-precision) vector stored as uint16 values. Each
+// uint16 is converted to float32 on the fly before multiplication.
+// This enables searching float16-stored vectors without pre-converting
+// the entire vector.
+//
+// Contract: Panics when len(q) != len(docF16). Empty vectors yield 0.
+//
+// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.4
+var DotF16F32 func(q []float32, docF16 []uint16) float32

@@ -69,6 +69,16 @@ type ANN struct {
 	SegID      uint64
 }
 
+// SparseVector is the §5 sparse-vector search node (inner-product scoring
+// against the inverted index, or brute-force memtable scan). M1 uses the
+// memtable brute-force path; segment-level inverted-index search is a
+// follow-up.
+type SparseVector struct {
+	Field types.FieldID
+	Query *dsl.SparseVectorQuery
+	SegID uint64
+}
+
 // BM25 is the §3.1 inverted-index-driven scorer.
 type BM25 struct {
 	Pred  *dsl.MatchQuery
@@ -93,14 +103,62 @@ type Fusion struct {
 	Size   int
 }
 
+// Aggregate is the §6 M1 aggregation node. It wraps a query plan (the
+// documents to aggregate over) and carries the group-by field plus
+// sub-aggregation definitions. The planner executes the sub-plan, collects
+// matching documents, and runs the aggregations via the agg package.
+// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.3
+type Aggregate struct {
+	Input     LogicalPlan       // documents to aggregate over
+	GroupField string            // group-by field name ("" for global agg)
+	Aggs      []AggDef           // sub-aggregation definitions
+}
+
+// AggDef mirrors agg.AggDef but lives in the plan package to avoid an
+// import cycle (plan → dsl only; agg → exec).
+type AggDef struct {
+	Name   string
+	Type   string
+	Params map[string]any
+}
+
 // planNode markers — Go has no marker methods on interfaces, so we
 // implement them as no-ops on every concrete node.
-func (*Scan) planNode()   {}
-func (*Filter) planNode() {}
-func (*ANN) planNode()    {}
-func (*BM25) planNode()   {}
-func (*TopN) planNode()   {}
-func (*Fusion) planNode() {}
+func (*Scan) planNode()      {}
+func (*Filter) planNode()    {}
+func (*ANN) planNode()       {}
+func (*SparseVector) planNode() {}
+func (*BM25) planNode()      {}
+func (*TopN) planNode()      {}
+func (*Fusion) planNode()    {}
+func (*Aggregate) planNode()      {}
+
+// Pipeline is the unified query pipeline node (Qdrant-style Query API).
+// It supports nested Prefetch sub-queries, fusion between prefetch
+// results, and optional rescore stages. Existing Fusion is the
+// simplified single-level version; Pipeline is the general superset.
+//
+// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.5
+type Pipeline struct {
+	Prefetches   []LogicalPlan    // sub-query plans (executed in parallel or sequentially)
+	FusionSpec   dsl.RankSpec     // fusion strategy between prefetch results
+	RescoreSpecs  []dsl.RescoreSpec // rescore stages applied after fusion
+	From         int
+	Size         int
+}
+
+func (*Pipeline) planNode() {}
+func (*ProjectionScan) planNode() {}
+
+// ProjectionScan is the F6 projection read node: it reads pre-computed
+// aggregate state from a projection file instead of scanning raw data.
+// @spec: 02_spec.md#7.4
+type ProjectionScan struct {
+	SegID          uint64
+	ProjectionName string
+	GroupBy        []string
+	Aggs           []AggDef
+}
 
 // String implementations for the §3.3 optimizer trace.
 func (s *Scan) String() string {
@@ -118,6 +176,11 @@ func (a *ANN) String() string {
 		plan = fmt.Sprintf("Strategy=%v, CandFactor=%d", a.FilterPlan.Strategy, a.FilterPlan.CandFactor)
 	}
 	return fmt.Sprintf("ANN(field=%d, seg=%d, k=%d, plan=%s)", a.Field, a.SegID, a.Knn.K, plan)
+}
+
+func (s *SparseVector) String() string {
+	return fmt.Sprintf("SparseVector(field=%d, seg=%d, dims=%d, boost=%g)",
+		s.Field, s.SegID, len(s.Query.Embedding), s.Query.Boost)
 }
 
 func (b *BM25) String() string {
@@ -138,6 +201,15 @@ func (f *Fusion) String() string {
 		fmt.Fprintf(&sb, "  ├─ %s\n", indent(in.String()))
 	}
 	return sb.String()
+}
+
+func (a *Aggregate) String() string {
+	return fmt.Sprintf("Aggregate(group=%q, aggs=%d)\n  └─ %s", a.GroupField, len(a.Aggs), indent(a.Input.String()))
+}
+
+func (p *ProjectionScan) String() string {
+	return fmt.Sprintf("ProjectionScan(seg=%d, proj=%q, groupBy=%v, aggs=%d)",
+		p.SegID, p.ProjectionName, p.GroupBy, len(p.Aggs))
 }
 
 // indent prefixes every line of s with "  " for the nested plan

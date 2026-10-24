@@ -37,6 +37,12 @@ const (
 	MetricDot
 	// MetricL2 is the squared Euclidean distance.
 	MetricL2
+	// MetricMIPS is Maximum Inner Product Search — same kernel as
+	// MetricDot but declared as a distinct type for clarity and
+	// future optimizations (design 02 §2.2). No normalization is
+	// applied at build time.
+	// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.3.9
+	MetricMIPS
 )
 
 // Config holds the tunable HNSW parameters (§2.2). The zero value is
@@ -47,7 +53,32 @@ type Config struct {
 	EFSearch       int // default query beam width; 0 -> 64
 	Metric         Metric
 	Seed           uint64 // level-assignment RNG seed (reproducible builds)
+	// Alpha controls adaptive pruning (§Phase 4). 0 or 1.0 = standard
+	// Malkov Alg. 4 (no change). >1.0 = relaxed (keep more remote
+	// neighbors); <1.0 = stricter pruning. Only effective when
+	// BuildMode != BuildModeInsert or when explicitly set.
+	// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.4.1
+	Alpha float64
+	// BuildMode selects the graph construction algorithm.
+	// 0 = BuildModeInsert (default, incremental insertion).
+	// 1 = BuildModeODescent (batch construction via ODescent).
+	// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.4.1
+	BuildMode BuildMode
+	// EnableEF enables Elias-Fano encoding of level-0 neighbor lists
+	// to reduce memory (§Phase 5). When false (default), neighbors are
+	// stored as raw []int32 in the CSR layout.
+	// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.5.2
+	EnableEF bool
 }
+
+// BuildMode selects the graph construction algorithm.
+// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.4.1
+type BuildMode int8
+
+const (
+	BuildModeInsert   BuildMode = 0 // incremental insertion (default)
+	BuildModeODescent BuildMode = 1 // batch construction via ODescent
+)
 
 func (c Config) resolve() Config {
 	if c.M <= 0 {
@@ -95,9 +126,12 @@ type Graph struct {
 	entry      int32
 	maxLevel   int8
 	vecs       []float32
-	sq         sqState // quantization tier, nil pointer until Quantize (§2.5)
+	sq         sqState // SQ8 quantization tier, nil until Quantize (§2.5)
+	rb         rbState // RaBitQ quantization tier, nil until EnableRaBitQ (§2.5)
+	pq         pqState // PQ quantization tier, nil until EnablePQ (§Phase 3)
 	segID      int32   // segment id of this graph; informational (§2.4.2)
 	crosslinks []int64 // peer segID<<32 | nodeID; populated by BuildCrosslinks (§2.4.2)
+	neighborsEF *efLevelData // Elias-Fano encoded level-0 neighbors (§Phase 5); nil = use raw
 }
 
 // N returns the number of nodes (== rows).
@@ -144,7 +178,12 @@ func (g *Graph) Vector(id int32) []float32 {
 }
 
 // layerNeighbors implements adjacency over the packed CSR layout.
+// When neighborsEF is active (§Phase 5), level-0 neighbors are decoded
+// from Elias-Fano encoded data; upper levels use the raw CSR layout.
 func (g *Graph) layerNeighbors(node int32, level int) []int32 {
+	if g.neighborsEF != nil && level == 0 {
+		return g.neighborsEF.data[node].decodeAll()
+	}
 	base := int(node)*MaxLevel + level
 	return g.neighbors[g.offsets[base]:g.offsets[base+1]]
 }
@@ -163,6 +202,7 @@ type builder struct {
 	mult     float64
 	searcher *layerSearcher
 	batch    []float32 // 16*dims gather buffer
+	cache    distCache // distance cache for heuristic (Phase 4), nil = no cache
 }
 
 func (b *builder) layerNeighbors(node int32, level int) []int32 {

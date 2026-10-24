@@ -76,7 +76,7 @@ func NewColumnWriter(fieldID types.FieldID, name string, ft meta.FieldType, opts
 	switch ft {
 	case meta.TypeKeyword, meta.TypeText:
 	case meta.TypeLong, meta.TypeDate, meta.TypeIP:
-	case meta.TypeDouble:
+	case meta.TypeDouble, meta.TypeFloat:
 	case meta.TypeBoolean:
 	default:
 		w.err = fmt.Errorf("segment: column type %s is not storable as a column block file", ft)
@@ -149,7 +149,7 @@ func (w *ColumnWriter) check(what string) bool {
 		want = fullString
 	case meta.TypeLong, meta.TypeDate, meta.TypeIP:
 		want = fullLong
-	case meta.TypeDouble:
+	case meta.TypeDouble, meta.TypeFloat:
 		want = fullDouble
 	case meta.TypeBoolean:
 		want = fullBool
@@ -179,17 +179,35 @@ func (w *ColumnWriter) afterAppend() {
 }
 
 // flushBlock encodes the buffered block into the data region.
+// @spec: 02_spec.md#3.3
 func (w *ColumnWriter) flushBlock() {
 	n := w.cur.Rows
 	if n == 0 {
 		return
 	}
 	st, minV, maxV := blockStatsOf(w.ft, w.cur)
-	enc := chooseEncoding(w.ft, st)
-	payload, err := encodeBlock(w.ft, enc, w.cur)
+
+	// Try composite codec first; fall back to single encoding.
+	var enc Encoding
+	var payload []byte
+	var err error
+
+	if chain := chooseCompositeCodec(w.ft, st, w.cur); chain != nil {
+		payload, err = chain.Encode(w.ft, w.cur)
+		if err != nil {
+			// Composite failed — fall back to single encoding.
+			enc = chooseEncoding(w.ft, st)
+			payload, err = encodeBlock(w.ft, enc, w.cur)
+		} else {
+			enc = EncodingComposite
+		}
+	} else {
+		enc = chooseEncoding(w.ft, st)
+		payload, err = encodeBlock(w.ft, enc, w.cur)
+	}
+
 	if err != nil {
 		w.err = err
-		// Keep the buffer consistent even on failure.
 		w.cur = newBlockData(w.ft, w.blockSize)
 		return
 	}
@@ -298,7 +316,7 @@ func blockStatsOf(ft meta.FieldType, d *BlockData) (st blockStats, minV, maxV an
 			}
 			prev, prevSet = v, true
 		}
-	case meta.TypeDouble:
+	case meta.TypeDouble, meta.TypeFloat:
 		prevSet, prev := false, float64(0)
 		for i := 0; i < n; i++ {
 			if d.IsNull(i) {
@@ -414,7 +432,7 @@ func (a *columnAccumulator) observe(ft meta.FieldType, d *BlockData, minV, maxV 
 				a.distinct[d.longs[i]] = struct{}{}
 			}
 		}
-	case meta.TypeDouble:
+	case meta.TypeDouble, meta.TypeFloat:
 		for i := 0; i < n; i++ {
 			if !d.IsNull(i) {
 				a.distinct[d.doubles[i]] = struct{}{}

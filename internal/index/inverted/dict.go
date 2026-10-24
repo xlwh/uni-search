@@ -80,12 +80,12 @@ func zstdDecompress(src []byte) ([]byte, error) {
 	return out, nil
 }
 
-// TermDict is the M0 sorted-array term dictionary (§3.1). Lookup is a
-// binary search over the in-memory sorted term slice; serialization is a
-// zstd-compressed length-prefixed blob (prefix sharing via zstd). The
-// file format is mmap-friendly — a fixed header followed by the offsets
-// array and the compressed blob — so M2 can swap to mmap-backed loading
-// without a format migration.
+// TermDict is the term dictionary (§3.1). M0 uses a sorted-array with
+// binary search; M1 adds an FST (fst.go) for ≥60% memory reduction and
+// fuzzy search support. When FST is built, Get and Iterate use the FST;
+// the sorted array is retained for Term(id) reverse lookup and legacy
+// serialization compatibility.
+// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.1
 type TermDict struct {
 	// terms are the distinct terms in sorted order. terms[i] has TermID i.
 	terms []string
@@ -94,6 +94,10 @@ type TermDict struct {
 	// the dict was assembled directly from a terms slice.
 	blob    []byte
 	offsets []uint32
+	// fst is the M1 finite-state transducer (nil when not built). When
+	// present, Get and Iterate use the FST for O(|term|) lookup and
+	// memory-efficient traversal. The sorted array stays for Term(id).
+	fst *FST
 }
 
 // NewTermDict builds a TermDict from a sorted, deduplicated term slice.
@@ -118,10 +122,43 @@ func (d *TermDict) Len() int { return len(d.terms) }
 // out of range.
 func (d *TermDict) Term(id TermID) string { return d.terms[id] }
 
+// FST returns the internal FST for fuzzy search, or nil when not built.
+// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.1
+func (d *TermDict) FST() *FST { return d.fst }
+
+// MemoryEstimateArray returns the approximate memory usage of the
+// sorted-array dictionary in bytes (string headers + data + offsets).
+func (d *TermDict) MemoryEstimateArray() int {
+	// Each string: 16 bytes header + len bytes data
+	total := 0
+	for _, t := range d.terms {
+		total += 16 + len(t)
+	}
+	total += len(d.offsets) * 4 // offsets array
+	return total
+}
+
+// MemoryEstimateFST returns the approximate memory usage of the FST
+// dictionary in bytes. Returns 0 when FST is not built.
+func (d *TermDict) MemoryEstimateFST() int {
+	if d.fst == nil {
+		return 0
+	}
+	return d.fst.MemoryEstimate()
+}
+
 // Get resolves a term to its TermID. The boolean is false when the term
-// is not in the dictionary.
+// is not in the dictionary. Uses FST when available (O(|term|)), falls
+// back to binary search on the sorted array.
 func (d *TermDict) Get(term []byte) (TermID, bool) {
-	if d == nil || len(d.terms) == 0 {
+	if d == nil {
+		return 0, false
+	}
+	if d.fst != nil {
+		out, ok := d.fst.Get(term)
+		return TermID(out), ok
+	}
+	if len(d.terms) == 0 {
 		return 0, false
 	}
 	i := sort.Search(len(d.terms), func(i int) bool {
@@ -317,9 +354,23 @@ func (b *TermDictBuilder) Add(term string) bool {
 	return true
 }
 
-// Finish sorts the accumulated terms and returns a TermDict. The
-// builder is consumed and must not be reused.
+// Finish sorts the accumulated terms and returns a TermDict with both
+// the sorted array (for Term(id) and serialization) and the FST (for
+// O(|term|) lookup and fuzzy search). The builder is consumed.
+// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.1
 func (b *TermDictBuilder) Finish() (*TermDict, error) {
 	sort.Strings(b.order)
-	return NewTermDict(b.order)
+	d, err := NewTermDict(b.order)
+	if err != nil {
+		return nil, err
+	}
+	// Build FST from sorted terms for M1 fuzzy search and memory savings.
+	fb := NewFSTBuilder()
+	for i, term := range b.order {
+		if err := fb.Add([]byte(term), uint32(i)); err != nil {
+			return nil, fmt.Errorf("inverted: build FST at term %d: %w", i, err)
+		}
+	}
+	d.fst = fb.Finish()
+	return d, nil
 }

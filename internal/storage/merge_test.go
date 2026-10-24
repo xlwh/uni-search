@@ -11,6 +11,7 @@ import (
 
 	"github.com/unisearch-db/unisearch/internal/index"
 	_ "github.com/unisearch-db/unisearch/internal/index/hnsw"
+	_ "github.com/unisearch-db/unisearch/internal/index/scalar"
 	"github.com/unisearch-db/unisearch/pkg/types"
 )
 

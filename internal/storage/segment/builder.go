@@ -287,19 +287,32 @@ func syncDir(path string) error {
 var crc32cTable = crc32.MakeTable(crc32.Castagnoli)
 
 // checksumManifest serializes the per-file manifest: for every file in
-// dir (sorted by name, meta.footer excluded): u32 name_len | name |
-// u64 size | u32 crc32c (design 01 §4.5: "全目录文件清单 + 各文件 crc").
+// dir (recursively, sorted by relative path, meta.footer excluded):
+// u32 name_len | name | u64 size | u32 crc32c (design 01 §4.5:
+// "全目录文件清单 + 各文件 crc"). Subdirectories (vec.idx/, inv.idx/,
+// scalar.idx/) are traversed recursively so index files are covered.
+// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.2.5
 func checksumManifest(dir string) ([]byte, error) {
-	entries, err := os.ReadDir(dir)
+	var names []string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil // recurse into subdirectories
+		}
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		if rel == footerFileName {
+			return nil
+		}
+		names = append(names, rel)
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-	var names []string
-	for _, e := range entries {
-		if e.IsDir() || e.Name() == footerFileName {
-			continue
-		}
-		names = append(names, e.Name())
 	}
 	sort.Strings(names)
 

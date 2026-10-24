@@ -278,6 +278,172 @@ func (ix *Index) Quantize(ctx context.Context, to index.QuantLevel) error {
 		index.ErrUnsupported, int(to))
 }
 
+// MergeSource describes one source segment's contribution to a merge with
+// deletion awareness. @spec: 02_spec.md#2.3
+type MergeSource struct {
+	Store   *invertedStore // loaded source index
+	Deletes *roaring.Bitmap // delete bitmap (nil = no deletes)
+	// RowMap[oldDocID] = newDocID for surviving rows. Length = source NumRows.
+	// Deleted rows have arbitrary values (they are filtered before lookup).
+	RowMap []uint32
+}
+
+// MergeWithOptions merges posting lists from multiple sources with deletion
+// filtering and row remapping. Unlike Merge, it uses FilterAndRemap to skip
+// deleted docIDs and remap surviving ones via per-source RowMaps. @spec: 02_spec.md#2.4
+func (ix *Index) MergeWithOptions(
+	ctx context.Context,
+	sources []MergeSource,
+	w index.IndexOutput,
+	field string,
+	storePositions bool,
+) error {
+	if len(sources) == 0 {
+		return fmt.Errorf("inverted: MergeWithOptions requires at least one source")
+	}
+
+	// Collect the union of terms across all sources (same as Merge).
+	termSet := make(map[string]struct{})
+	for _, src := range sources {
+		if src.Store == nil || src.Store.dict == nil {
+			continue
+		}
+		it := src.Store.dict.Iterate(nil)
+		for it.HasNext() {
+			_, t := it.Next()
+			termSet[t] = struct{}{}
+		}
+	}
+	terms := make([]string, 0, len(termSet))
+	for t := range termSet {
+		terms = append(terms, t)
+	}
+	sort.Strings(terms)
+	dict, err := NewTermDict(terms)
+	if err != nil {
+		return err
+	}
+
+	// Compute merged field lengths from surviving rows only.
+	// For each source, reconstruct per-doc field lengths from postings,
+	// then filter deleted docs and remap to new docIDs.
+	var mergedFieldLens []int
+	for _, src := range sources {
+		if src.Store == nil {
+			continue
+		}
+		// Reconstruct per-doc field lengths from each term's posting fldLen.
+		docLen := make([]int, src.Store.stats.DocCount)
+		for _, pl := range src.Store.postings {
+			it := pl.Iterate()
+			for it.HasNext() {
+				p := it.Next()
+				if int(p.FieldLen) > docLen[p.DocID] {
+					docLen[p.DocID] = int(p.FieldLen)
+				}
+			}
+		}
+		// Only include surviving rows.
+		for docID := uint32(0); docID < src.Store.stats.DocCount; docID++ {
+			if src.Deletes != nil && src.Deletes.Contains(docID) {
+				continue
+			}
+			mergedFieldLens = append(mergedFieldLens, docLen[docID])
+		}
+	}
+	stats := NewSegmentStats(mergedFieldLens)
+
+	// Merge posting lists term by term.
+	postings := make(map[TermID]*PostingList, len(terms))
+	for _, term := range terms {
+		id, _ := dict.GetStr(term)
+		var merged []Posting
+		for _, src := range sources {
+			if src.Store == nil || src.Store.dict == nil {
+				continue
+			}
+			oldID, ok := src.Store.dict.GetStr(term)
+			if !ok {
+				continue
+			}
+			pl := src.Store.postings[oldID]
+			if pl == nil {
+				continue
+			}
+			// FilterAndRemap: skip deleted docIDs, remap surviving ones.
+			remapped := pl.FilterAndRemap(src.Deletes, src.RowMap)
+			it := remapped.Iterate()
+			for it.HasNext() {
+				merged = append(merged, it.Next())
+			}
+		}
+		postings[id] = NewPostingList(merged)
+	}
+
+	st := &invertedStore{dict: dict, postings: postings, stats: stats, field: field}
+	if err := writeInvertedFiles(w, st, storePositions); err != nil {
+		return err
+	}
+	ix.store = st
+	return nil
+}
+
+// ComputeRowOffsets builds a RowMap for a source segment given its delete
+// bitmap and the starting new row ID. RowMap[oldDocID] = newDocID for
+// surviving rows; deleted rows get a sentinel value. @spec: 02_spec.md#2.2
+func ComputeRowOffsets(numRows uint32, deletes *roaring.Bitmap, startNewRow uint32) []uint32 {
+	rowMap := make([]uint32, numRows)
+	newRow := startNewRow
+	for oldRow := uint32(0); oldRow < numRows; oldRow++ {
+		if deletes != nil && deletes.Contains(oldRow) {
+			rowMap[oldRow] = 0xFFFFFFFF // sentinel for deleted rows
+			continue
+		}
+		rowMap[oldRow] = newRow
+		newRow++
+	}
+	return rowMap
+}
+
+// MergeLoaded merges posting lists from loaded inverted indexes with
+// deletion filtering and row remapping. This is the public entry point for
+// the storage layer to merge inverted indexes without accessing unexported
+// types. @spec: 02_spec.md#2.4
+func MergeLoaded(
+	ctx context.Context,
+	loaded []index.LoadedIndex,
+	deletes []*roaring.Bitmap,
+	numRows []uint32,
+	w index.IndexOutput,
+	field string,
+	storePositions bool,
+) error {
+	if len(loaded) == 0 {
+		return fmt.Errorf("inverted: MergeLoaded requires at least one source")
+	}
+	var sources []MergeSource
+	startNewRow := uint32(0)
+	for i, li := range loaded {
+		typed, ok := li.(*loadedIndex)
+		if !ok {
+			return fmt.Errorf("inverted: cannot merge foreign loaded index %T", li)
+		}
+		rowMap := ComputeRowOffsets(numRows[i], deletes[i], startNewRow)
+		sources = append(sources, MergeSource{
+			Store:   typed.st,
+			Deletes: deletes[i],
+			RowMap:  rowMap,
+		})
+		surviving := numRows[i]
+		if deletes[i] != nil {
+			surviving -= uint32(deletes[i].GetCardinality())
+		}
+		startNewRow += surviving
+	}
+	ix := &Index{}
+	return ix.MergeWithOptions(ctx, sources, w, field, storePositions)
+}
+
 // MemEstimate implements index.Index.
 func (ix *Index) MemEstimate() int64 {
 	if ix.store == nil {
@@ -297,11 +463,29 @@ func (ix *Index) MemEstimate() int64 {
 	return sz
 }
 
+// GlobalStatsProvider supplies cross-segment BM25 statistics so IDF
+// uses the full corpus rather than a single segment (design 03 §7).
+// When set on a loadedIndex, ScoreDocs uses the global doc frequency
+// and global doc count for IDF computation.
+// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.9
+type GlobalStatsProvider interface {
+	DocFreq(term string) uint32
+	DocCount() uint64
+	AvgFieldLen() float64
+}
+
 // loadedIndex is the searchable handle over one built inverted index.
 // Immutable and safe for concurrent use.
 type loadedIndex struct {
-	st  *invertedStore
-	cfg Config
+	st          *invertedStore
+	cfg         Config
+	globalStats GlobalStatsProvider // M1: nil = per-segment stats (M0 behavior)
+}
+
+// SetGlobalStats installs a cross-segment stats provider. When set,
+// ScoreDocs and SearchTerms use global IDF (design 03 §7).
+func (l *loadedIndex) SetGlobalStats(gsp GlobalStatsProvider) {
+	l.globalStats = gsp
 }
 
 var _ index.LoadedIndex = (*loadedIndex)(nil)
@@ -319,7 +503,8 @@ func (l *loadedIndex) Search(ctx context.Context, q index.Query, budget index.Se
 		return nil, err
 	}
 	if len(q.Term) == 0 {
-		return nil, fmt.Errorf("inverted: empty query term")
+		// Empty query term: return empty results instead of erroring.
+		return &index.SearchResult{}, nil
 	}
 	return l.SearchTerms(ctx, [][]byte{q.Term}, nil, q.K, budget)
 }
@@ -344,7 +529,14 @@ func (l *loadedIndex) ScoreDocs(ctx context.Context, terms [][]byte) (map[uint32
 		if pl == nil {
 			continue
 		}
+		// M1: use global doc frequency when global stats is set (03 §7).
 		df := pl.DocFreq()
+		if l.globalStats != nil {
+			gdf := int(l.globalStats.DocFreq(string(term)))
+			if gdf > 0 {
+				df = gdf
+			}
+		}
 		it := pl.Iterate()
 		for it.HasNext() {
 			p := it.Next()
@@ -369,6 +561,14 @@ func (l *loadedIndex) SearchTerms(ctx context.Context, terms [][]byte, phraseFil
 	}
 	if len(terms) == 0 {
 		return &index.SearchResult{}, nil
+	}
+	// WAND optimization for multi-term queries without phrase filter
+	// (§3.4). Single-term and phrase-filtered queries use the full
+	// ScoreDocs traversal.
+	// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.2
+	if len(terms) > 1 && phraseFilter == nil {
+		scorer := NewWANDScorer(l.st.dict, l.st.postings, l.st.stats, l.cfg.BM25, terms, k)
+		return scorer.Search(ctx)
 	}
 	scores, err := l.ScoreDocs(ctx, terms)
 	if err != nil {

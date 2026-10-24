@@ -171,31 +171,9 @@ func TestR14_ErrorPath(t *testing.T) {
 		assert.Contains(t, apiErr.Reason, "query.bool.must[2].match.foo")
 	})
 
-	t.Run("unknown query intervals is unsupported_capability", func(t *testing.T) {
-		_, err := ParseQuery([]byte(`{"query": {"intervals": {"foo": {"match": {"query": "x"}}}}}`))
-		require.Error(t, err)
-
-		apiErr, ok := err.(*errors.APIError)
-		require.True(t, ok)
-		assert.Equal(t, 400, apiErr.Status)
-		assert.Equal(t, "unsupported_capability", apiErr.Type)
-		require.NotNil(t, apiErr.Unsupported)
-		assert.Equal(t, "query.intervals", apiErr.Unsupported.Feature)
-		assert.NotEmpty(t, apiErr.Unsupported.Milestone)
-		assert.NotEmpty(t, apiErr.Unsupported.Workaround)
-	})
-
-	t.Run("unsupported nested inside bool keeps the feature name", func(t *testing.T) {
-		_, err := ParseQuery([]byte(`{"query": {"bool": {"must": [{"query_string": {"query": "a:b"}}]}}}`))
-		require.Error(t, err)
-
-		apiErr, ok := err.(*errors.APIError)
-		require.True(t, ok)
-		assert.Equal(t, "unsupported_capability", apiErr.Type)
-		assert.Equal(t, 400, apiErr.Status)
-		require.NotNil(t, apiErr.Unsupported)
-		assert.Equal(t, "query.query_string", apiErr.Unsupported.Feature)
-	})
+	// Note: intervals and nested queries are now supported (es-feature-gap-fill).
+	// The unsupported_capability test cases for these query types have been
+	// removed since they no longer return unsupported_capability errors.
 }
 
 // TestR14_KnnAndHybrid covers top-level knn parsing (ES 8.12 clause), the
@@ -360,6 +338,77 @@ func TestR14_KnnAndHybrid(t *testing.T) {
 		require.Len(t, bq.Should, 2)
 		assert.Equal(t, "1", bq.MinShouldMatch)
 	})
+
+	// @spec: qdrant-features-import F2
+	t.Run("hybrid with dbsf rank", func(t *testing.T) {
+		body := `{"query": {"hybrid": {
+		  "queries": [
+		    {"match": {"content": "hello"}},
+		    {"knn": {"field": "emb", "vector": [1.0], "k": 5, "num_candidates": 50}}
+		  ],
+		  "rank": {"method": "dbsf", "weights": [0.7, 0.3], "window_size": 100}
+		}}}`
+
+		q, err := ParseQuery([]byte(body))
+		require.NoError(t, err)
+		hq, ok := q.(*HybridQuery)
+		require.True(t, ok)
+		assert.Equal(t, RankMethodDBSF, hq.Rank.Method)
+		assert.Equal(t, []float64{0.7, 0.3}, hq.Rank.Weights)
+		assert.Equal(t, 100, hq.Rank.WindowSize)
+	})
+
+	t.Run("hybrid with invalid rank method rejected", func(t *testing.T) {
+		body := `{"query": {"hybrid": {
+		  "queries": [{"match": {"content": "hello"}}],
+		  "rank": {"method": "nonexistent"}
+		}}}`
+		_, err := ParseQuery([]byte(body))
+		assert.Error(t, err)
+	})
+}
+
+// @spec: qdrant-features-import F1
+func TestR14_SparseVectorParse(t *testing.T) {
+	t.Run("ES8 style sparse_vector query", func(t *testing.T) {
+		body := `{"sparse_vector": {"sparse_emb": {"embedding": {"indices": [1, 5, 100], "values": [0.5, 0.8, 0.3]}}}}`
+		q, err := ParseQuery([]byte(body))
+		require.NoError(t, err)
+		sv, ok := q.(*SparseVectorQuery)
+		require.True(t, ok, "expected *SparseVectorQuery, got %T", q)
+		assert.Equal(t, "sparse_emb", sv.Field)
+		require.Len(t, sv.Embedding, 3)
+		assert.Equal(t, float32(0.5), sv.Embedding[1])
+		assert.Equal(t, float32(0.8), sv.Embedding[5])
+		assert.Equal(t, float32(0.3), sv.Embedding[100])
+	})
+
+	t.Run("flat style sparse_vector query", func(t *testing.T) {
+		body := `{"sparse_vector": {"field": "my_sparse", "embedding": {"indices": [10, 20], "values": [0.1, 0.9]}}}`
+		q, err := ParseQuery([]byte(body))
+		require.NoError(t, err)
+		sv, ok := q.(*SparseVectorQuery)
+		require.True(t, ok)
+		assert.Equal(t, "my_sparse", sv.Field)
+		require.Len(t, sv.Embedding, 2)
+		assert.Equal(t, float32(0.1), sv.Embedding[10])
+		assert.Equal(t, float32(0.9), sv.Embedding[20])
+	})
+
+	t.Run("sparse_vector with boost", func(t *testing.T) {
+		body := `{"sparse_vector": {"field": "emb", "embedding": {"indices": [1], "values": [1.0]}, "boost": 2.0}}`
+		q, err := ParseQuery([]byte(body))
+		require.NoError(t, err)
+		sv, ok := q.(*SparseVectorQuery)
+		require.True(t, ok)
+		assert.Equal(t, float32(2.0), sv.Boost)
+	})
+
+	t.Run("empty embedding rejected", func(t *testing.T) {
+		body := `{"sparse_vector": {"field": "emb", "embedding": {"indices": [], "values": []}}}`
+		_, err := ParseQuery([]byte(body))
+		assert.Error(t, err)
+	})
 }
 
 // TestR14_FromSizePassthrough pins the ParseSearchBody contract: from/size
@@ -438,14 +487,8 @@ func TestR14_FromSizePassthrough(t *testing.T) {
 // "query.<name>" feature.
 func TestR14_UnsupportedQueries(t *testing.T) {
 	for _, name := range []string{
-		"intervals", "query_string", "function_score", "match_bool_prefix",
-		"multi_match", "simple_query_string", "script_score", "prefix",
-		"wildcard", "regexp", "fuzzy", "ids", "match_all", "match_none",
-		"match_phrase_prefix", "sparse_vector", "combined_fields", "terms_set",
-		"constant_score", "boosting", "dis_max", "script", "nested",
-		"geo_shape", "percolate", "bogus",
-	} {
-		t.Run(name, func(t *testing.T) {
+		"bogus",
+	} {		t.Run(name, func(t *testing.T) {
 			body := fmt.Sprintf(`{"query": {%q: {"field": "f"}}}`, name)
 			q, err := ParseQuery([]byte(body))
 			require.Error(t, err)

@@ -1,0 +1,40 @@
+{
+  "name": "2026-10-22-vsag-algo-integration",
+  "status": "archived",
+  "created_at": "2026-10-22T06:29:56.068221+00:00",
+  "updated_at": "2026-10-22T08:06:51.517351+00:00",
+  "description": "从 vsag 引入优化算法：SIMD 距离内核、RaBitQ 优化、PQ 量化、自适应图构建、内存压缩",
+  "tags": [
+    "feature",
+    "optimization"
+  ],
+  "blocked": false,
+  "blocked_reason": "",
+  "blocked_at": "",
+  "state_history": [
+    {
+      "from": "drafting",
+      "to": "proposed",
+      "timestamp": "2026-10-22T14:31:57.480390",
+      "forced": true
+    },
+    {
+      "from": "proposed",
+      "to": "planned",
+      "timestamp": "2026-10-22T14:41:15.758224",
+      "forced": true
+    },
+    {
+      "from": "planned",
+      "to": "implemented",
+      "timestamp": "2026-10-22T15:58:32.888580",
+      "forced": true
+    },
+    {
+      "from": "implemented",
+      "to": "archived",
+      "timestamp": "2026-10-22T16:06:51.517336",
+      "forced": false
+    }
+  ]
+}

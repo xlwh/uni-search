@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/unisearch-db/unisearch/internal/storage/mmap"
 	"github.com/unisearch-db/unisearch/pkg/types"
 )
 
@@ -37,13 +38,28 @@ type Segment struct {
 	dir    string
 	footer *SegmentFooter
 
-	mu      sync.Mutex
-	closed  bool
-	cols    map[types.FieldID]*ColumnReader
-	idHash  *idHashTable
-	rowIDs  []string // row-ordered _id vector, lazy from id.hash
-	srcDec  []byte   // decompressed src.zst stream, lazy
-	srcOpen bool
+	mu       sync.Mutex
+	closed   bool
+	cols     map[types.FieldID]*ColumnReader
+	idHash   *idHashTable
+	rowIDs   []string // row-ordered _id vector, lazy from id.hash
+	srcDec   []byte   // decompressed src.zst stream, lazy
+	srcOpen  bool
+	mmapFiles []*mmap.MmapFile // tracked for cleanup on Close
+}
+
+// loadFile reads a file from the segment directory using mmap when
+// enabled (falling back to os.ReadFile). The returned MmapFile is
+// tracked for cleanup on Close. The returned byte slice aliases the
+// MmapFile's mapped region and stays valid until Close.
+// @spec: ./active_specs/2026-10-23-iresearch-features-import/02_spec.md#2.1
+func (s *Segment) loadFile(name string, advice mmap.MmapAdvice) ([]byte, error) {
+	mf, err := mmap.Load(filepath.Join(s.dir, name), advice)
+	if err != nil {
+		return nil, err
+	}
+	s.mmapFiles = append(s.mmapFiles, mf)
+	return mf.Bytes(), nil
 }
 
 // OpenSegment opens a published segment directory (seg_{segment_id}).
@@ -114,7 +130,7 @@ func (s *Segment) column(field types.FieldID) (*ColumnReader, error) {
 	if r, ok := s.cols[field]; ok {
 		return r, nil
 	}
-	data, err := os.ReadFile(filepath.Join(s.dir, colFileName(field)))
+	data, err := s.loadFile(colFileName(field), mmap.AdviseRandom)
 	if err != nil {
 		return nil, fmt.Errorf("segment: field %d not stored in %s: %w", field, s.dir, err)
 	}
@@ -147,7 +163,7 @@ func (s *Segment) idIndex() (*idHashTable, error) {
 	if s.closed {
 		return nil, fmt.Errorf("segment: %s closed", s.dir)
 	}
-	data, err := os.ReadFile(filepath.Join(s.dir, idHashFileName))
+	data, err := s.loadFile(idHashFileName, mmap.AdviseRandom)
 	if err != nil {
 		return nil, fmt.Errorf("segment: read id.hash: %w", err)
 	}
@@ -184,7 +200,7 @@ func (s *Segment) DocID(row types.RowID) (string, error) {
 		if s.closed {
 			return "", fmt.Errorf("segment: %s closed", s.dir)
 		}
-		data, err := os.ReadFile(filepath.Join(s.dir, idHashFileName))
+		data, err := s.loadFile(idHashFileName, mmap.AdviseRandom)
 		if err != nil {
 			return "", fmt.Errorf("segment: read id.hash: %w", err)
 		}
@@ -220,7 +236,7 @@ func (s *Segment) Source(row types.RowID) ([]byte, error) {
 		if s.closed {
 			return nil, fmt.Errorf("segment: %s closed", s.dir)
 		}
-		raw, err := os.ReadFile(filepath.Join(s.dir, sourceFileName))
+		raw, err := s.loadFile(sourceFileName, mmap.AdviseSequential)
 		if err != nil {
 			return nil, fmt.Errorf("segment: read src.zst: %w", err)
 		}
@@ -237,6 +253,32 @@ func (s *Segment) Source(row types.RowID) ([]byte, error) {
 	}
 	start, end := offs[row], offs[row+1]
 	return s.srcDec[start:end], nil
+}
+
+// Warmup pre-loads the specified column files into memory via mmap
+// MADV_WILLNEED, reducing first-query latency. Safe to call
+// concurrently; no-op for already-cached columns.
+// @spec: ./active_specs/2026-10-23-iresearch-features-import/02_spec.md#2.7
+func (s *Segment) Warmup(fields []types.FieldID) error {
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return fmt.Errorf("segment: %s closed", s.dir)
+	}
+	s.mu.Unlock()
+
+	for _, field := range fields {
+		// Trigger lazy load + mmap advice.
+		if _, err := s.column(field); err != nil {
+			// Skip missing columns silently.
+			continue
+		}
+		// Apply MADV_WILLNEED to the mmap region if available.
+		for _, mf := range s.mmapFiles {
+			mf.Advise(mmap.AdviseWillNeed)
+		}
+	}
+	return nil
 }
 
 // VerifyChecksums recomputes the per-file checksum manifest and compares
@@ -259,6 +301,11 @@ func (s *Segment) Close() error {
 	s.idHash = nil
 	s.rowIDs = nil
 	s.srcDec = nil
+	// Close all tracked mmap files.
+	for _, mf := range s.mmapFiles {
+		mf.Close()
+	}
+	s.mmapFiles = nil
 	return nil
 }
 

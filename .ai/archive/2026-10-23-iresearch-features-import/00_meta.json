@@ -1,0 +1,44 @@
+{
+  "name": "2026-10-23-iresearch-features-import",
+  "status": "archived",
+  "created_at": "2026-10-23T07:01:10.813002+00:00",
+  "updated_at": "2026-10-23T08:28:21.382957+00:00",
+  "description": "从 iresearch 引入高级分析器、I/O 存储优化、查询打分增强等 13 个特性",
+  "tags": [
+    "feature",
+    "analyzer",
+    "storage",
+    "query",
+    "scoring",
+    "iresearch-import"
+  ],
+  "blocked": false,
+  "blocked_reason": "",
+  "blocked_at": "",
+  "state_history": [
+    {
+      "from": "drafting",
+      "to": "proposed",
+      "timestamp": "2026-10-23T15:05:50.252494",
+      "forced": true
+    },
+    {
+      "from": "proposed",
+      "to": "planned",
+      "timestamp": "2026-10-23T15:15:50.625791",
+      "forced": true
+    },
+    {
+      "from": "planned",
+      "to": "implemented",
+      "timestamp": "2026-10-23T16:25:55.429645",
+      "forced": true
+    },
+    {
+      "from": "implemented",
+      "to": "archived",
+      "timestamp": "2026-10-23T16:28:21.382941",
+      "forced": false
+    }
+  ]
+}

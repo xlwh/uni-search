@@ -1,0 +1,59 @@
+# GitHub Actions CI for UniSearch (design 06 §6).
+# @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#4.6
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.60
+          args: --timeout=5m
+      - name: test
+        run: CGO_ENABLED=0 go test -race -timeout 120s ./...
+      - name: build
+        run: CGO_ENABLED=0 go build ./...
+      - name: vet
+        run: go vet ./...
+      - name: golden tests
+        run: CGO_ENABLED=0 go test -timeout 60s ./test/golden/...
+
+  cross-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: cross-build linux/amd64
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/unisearch-linux-amd64 ./cmd/unisearch/
+      - name: cross-build linux/arm64
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o dist/unisearch-linux-arm64 ./cmd/unisearch/
+      - name: cross-build darwin/arm64
+        run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o dist/unisearch-darwin-arm64 ./cmd/unisearch/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: dist/
+
+  bench-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: micro-bench
+        run: CGO_ENABLED=0 go test -bench=. -benchtime=10x -timeout=600s ./test/bench/... || true

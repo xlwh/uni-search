@@ -324,6 +324,63 @@ func (s *Shard) Write(ctx context.Context, batch []WriteOp) (types.SeqNo, error)
 	return seq, nil
 }
 
+// WriteAsync is like Write but uses AppendAsync (design 01 §3.2:
+// refresh=false): WAL entries are queued for background fsync without
+// blocking. The memtable is still updated synchronously so the write
+// is immediately visible to queries. Use this when refresh=false to
+// avoid waiting for fsync on every write.
+// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.2.8
+func (s *Shard) WriteAsync(ctx context.Context, batch []WriteOp) (types.SeqNo, error) {
+	if len(batch) == 0 {
+		return s.mt.VisibleSeqNo(), nil
+	}
+	entries := make([]wal.Entry, 0, len(batch))
+	for _, op := range batch {
+		switch op.Kind {
+		case WriteInsert:
+			entries = append(entries, wal.NewInsert(op.Doc))
+		case WriteDelete:
+			entries = append(entries, wal.NewDelete(op.ID))
+		case WriteUpdate:
+			entries = append(entries, wal.NewUpdate(op.ID, op.Doc))
+		default:
+			return 0, fmt.Errorf("storage: unknown write op kind %d", op.Kind)
+		}
+	}
+	seq, err := s.w.AppendAsync(ctx, entries...)
+	if err != nil {
+		return 0, err
+	}
+	for i, op := range batch {
+		e := entries[i]
+		switch op.Kind {
+		case WriteInsert:
+			row, err := s.applyInsert(op.Doc, e.SeqNo)
+			if err != nil {
+				return seq, err
+			}
+			if err := s.mt.Append(row); err != nil {
+				return seq, err
+			}
+		case WriteDelete:
+			s.applyDelete(op.ID, e.SeqNo)
+		case WriteUpdate:
+			s.applyDelete(op.ID, e.SeqNo)
+			row, err := s.applyInsert(op.Doc, e.SeqNo)
+			if err != nil {
+				return seq, err
+			}
+			if err := s.mt.Append(row); err != nil {
+				return seq, err
+			}
+		}
+	}
+	if cur := types.SeqNo(s.applied.Load()); seq > cur {
+		s.applied.Store(uint64(seq))
+	}
+	return seq, nil
+}
+
 // Snapshot returns the MVCC read view (memtable watermark + live
 // SegmentSet) for query execution (design 01 §8). The watermark is
 // max(memtable visible, applied) so pure-delete batches surface their
@@ -346,6 +403,13 @@ func (s *Shard) VisibleSeqNo() types.SeqNo {
 		return applied
 	}
 	return mt
+}
+
+// IsSegmentRowDeleted reports whether (segID,rowID) has been deleted
+// via the DeleteTracker (§6.2). Exposed so the query execution path
+// can filter deleted rows from segment scan results.
+func (s *Shard) IsSegmentRowDeleted(segID types.SegmentID, rowID types.RowID) bool {
+	return s.dt.IsSegmentRowDeleted(segID, rowID)
 }
 
 // Iterate visits every visible row across the memtable and the live
@@ -458,6 +522,53 @@ func (s *Shard) Close() error {
 		}
 	}
 	return s.w.Close()
+}
+
+// GetDocSource returns the _source and seq_no for a document by _id,
+// checking both the memtable and segments. Returns found=false if the
+// id is not present or has been deleted.
+// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.1.7
+func (s *Shard) GetDocSource(ctx context.Context, id string, snap types.Snapshot) ([]byte, types.SeqNo, bool) {
+	// Check memtable first.
+	if v, ok := s.mt.Lookup(id, snap); ok {
+		if s.dt.IsMemDeleted(v.ID, v.SeqNo, snap) {
+			return nil, 0, false
+		}
+		return v.Source, v.SeqNo, true
+	}
+	// Check segments.
+	set := s.setHolder.load()
+	for _, e := range set.items {
+		if e.Reader == nil || e.Reader.Footer().MaxSeqNo > snap.ReadUpTo {
+			continue
+		}
+		rid, ok, err := e.Reader.LookupID(ctx, id)
+		if err != nil || !ok {
+			continue
+		}
+		if s.dt.IsSegmentRowDeleted(e.Reader.ID(), rid) {
+			return nil, 0, false
+		}
+		source, err := e.Reader.Source(rid)
+		if err != nil {
+			return nil, 0, false
+		}
+		return source, 0, true
+	}
+	return nil, 0, false
+}
+
+// IterateMemtable visits every visible row in the active memtable only
+// (not segments). The callback receives the row's _id, seq_no, and
+// _source. Used by the embedded engine's memtable search path (D1/D4).
+// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.1.5
+func (s *Shard) IterateMemtable(snap types.Snapshot, fn func(rowID types.RowID, id string, seq types.SeqNo, source []byte) bool) {
+	s.mt.Iterate(snap, func(v memtable.RowView) bool {
+		if s.dt.IsMemDeleted(v.ID, v.SeqNo, snap) {
+			return true // skip deleted, continue iteration
+		}
+		return fn(v.RowID, v.ID, v.SeqNo, v.Source)
+	})
 }
 
 // WriteOpKind tags the kind of one write operation in a Write batch.

@@ -2,7 +2,6 @@ package analyzer
 
 import (
 	"strings"
-	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -138,21 +137,6 @@ func (keywordTokenizer) Tokenize(text []byte) []Token {
 	}}
 }
 
-// chineseSegmenter lazily builds the gse segmenter over the default
-// embedded dictionary. Loading (and HMM model init) costs several hundred
-// milliseconds, so the instance is cached process-wide via sync.OnceValue
-// and shared by every chinese analyzer; it is read-only after load and
-// therefore safe for concurrent use.
-var chineseSegmenter = sync.OnceValue(func() *gse.Segmenter {
-	seg, err := gse.NewEmbed()
-	if err != nil {
-		// The embedded dictionary cannot fail to load; guard anyway and
-		// let Analyze degrade to no tokens instead of panicking.
-		return nil
-	}
-	return &seg
-})
-
 // chineseTokenizer segments text with gse in HMM mode (jieba-style precise
 // mode) over the default embedded dictionary, providing ik/jieba-like
 // semantics. Tokens without any letter or digit (whitespace, punctuation)
@@ -167,7 +151,7 @@ func (chineseTokenizer) Tokenize(text []byte) []Token {
 	if len(text) == 0 {
 		return nil
 	}
-	seg := chineseSegmenter()
+	seg := getSegmenter()
 	if seg == nil {
 		return nil
 	}

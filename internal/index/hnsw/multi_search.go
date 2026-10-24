@@ -6,14 +6,13 @@
 // other segments, and merging the per-segment TopK into a global
 // TopK.
 //
-// M0 scope: the routing and per-segment beam searches are real, but
-// the crosslink "jump" is realized as a follow-up federated search
-// over every segment reachable through the start segment's entrance
-// set. This trades the design's true unified candidate heap for a
-// simpler "route then fan-out" implementation that still exercises
-// the crosslink build (T13.1) and the entry-selection routing layer
-// (T13.2 step 1). M2 will fold crosslink jumps into the layer-0
-// traversal so a single heap spans segments.
+// The search uses a result-driven crosslink jump strategy: after
+// searching the best entry segment, the top results' crosslinks are
+// examined to discover additional segments that may contain relevant
+// vectors. This is more targeted than blind BFS and approximates the
+// design's unified candidate heap (§2.4.2) without requiring a full
+// rewrite of the layer-0 traversal.
+// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.3.3
 package hnsw
 
 import (

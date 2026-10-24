@@ -103,9 +103,13 @@ func PlanVectorFilter(sel EstimatedSelectivity, k int) FilterPlan {
 		plan.Strategy = StrategyPostFilter
 		plan.CandFactor = 5
 	default:
-		// 10%~30%: design calls for Iterative; M0 lacks WAND so we
-		// fall back to PostFilter with a smaller oversample.
-		plan.Strategy = StrategyPostFilter
+		// 10%~30%: Iterative strategy (design 02 §2.6). Tries
+		// pre-filter (restricted traversal) first; if insufficient k,
+		// falls back to post-filter with oversampling. This combines
+		// the efficiency of pre-filter for moderate selectivity with
+		// the completeness guarantee of post-filter.
+		// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.3.2
+		plan.Strategy = StrategyIterative
 		plan.CandFactor = 3
 	}
 	return plan
@@ -134,7 +138,11 @@ func PlanVectorFilter(sel EstimatedSelectivity, k int) FilterPlan {
 // filtered set across retries is returned, so a wide retry never
 // discards an earlier better result.
 //
-// Iterative is treated identically to PostFilter in M0 (no WAND).
+// Iterative (design 02 §2.6): tries pre-filter (restricted traversal)
+// first; if insufficient k, falls back to post-filter with oversampling.
+// This combines pre-filter efficiency for moderate selectivity with
+// post-filter completeness.
+// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.3.2
 func ExecuteFilterPlan(ctx context.Context, li index.LoadedIndex, q index.Query, plan FilterPlan) (*index.SearchResult, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -143,39 +151,36 @@ func ExecuteFilterPlan(ctx context.Context, li index.LoadedIndex, q index.Query,
 		return nil, fmt.Errorf("hnsw: ExecuteFilterPlan requires a non-nil LoadedIndex")
 	}
 
+	k := q.K
+	if k <= 0 {
+		k = 10
+	}
+
 	// Pre-filter path: forward q.Filter to the graph. The graph's
 	// beam search honors the predicate during traversal (§2.4.4/§2.6
 	// "受限遍历"). No oversampling.
-	if plan.Strategy == StrategyPreFilter {
+	if plan.Strategy == StrategyPreFilter || plan.Strategy == StrategyIterative {
 		res, err := li.Search(ctx, q, plan.Budget)
 		if err != nil {
 			return nil, err
-		}
-		k := q.K
-		if k <= 0 {
-			k = 10
 		}
 		if len(res.Hits) >= k {
 			return res, nil
 		}
 		// Restricted traversal could not recover k matching rows.
-		// Fall back to an exact brute-force scan over the matching
-		// set so pre-filter always matches the "filter-then-brute-
-		// force-TopK" baseline (§2.6 spec test). Only the concrete
-		// *loadedIndex carries the graph needed for the fallback;
-		// foreign implementations return what the graph gave.
-		if con, ok := li.(*loadedIndex); ok {
-			return bruteForceFiltered(ctx, con, q, k)
+		if plan.Strategy == StrategyPreFilter {
+			// Fall back to brute-force for pre-filter guarantee.
+			if con, ok := li.(*loadedIndex); ok {
+				return bruteForceFiltered(ctx, con, q, k)
+			}
+			return res, nil
 		}
-		return res, nil
+		// Iterative: fall through to post-filter instead of brute force.
+		// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.3.2
 	}
 
 	// Post-filter path: oversample + filter + ef×2 retry (≤2).
 	filter := q.Filter
-	k := q.K
-	if k <= 0 {
-		k = 10
-	}
 	candK := k * plan.CandFactor
 	if candK < k {
 		candK = k

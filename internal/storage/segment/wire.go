@@ -51,7 +51,7 @@ func fieldTypeCode(ft meta.FieldType) uint64 {
 		return ftText
 	case meta.TypeLong:
 		return ftLong
-	case meta.TypeDouble:
+	case meta.TypeDouble, meta.TypeFloat:
 		return ftDouble
 	case meta.TypeDate:
 		return ftDate

@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
+
+	"github.com/unisearch-db/unisearch/internal/meta"
 )
 
 // ErrUnsupported is returned by Index methods that do not apply to the
@@ -45,6 +47,10 @@ const (
 	// QuantSQ8 is per-dimension int8 scalar quantization (warm tier,
 	// 1B/dim, ~98% recall @ ef64 with rerank).
 	QuantSQ8
+	// QuantPQ is Product Quantization with K-means++ training
+	// (warm tier, ~M bytes/vector, ~95% recall with rerank).
+	// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.3
+	QuantPQ
 )
 
 // ColumnProvider streams one column of a segment in row order. It is
@@ -200,4 +206,40 @@ func NewIndex(kind IndexKind) (Index, error) {
 		return nil, fmt.Errorf("%w: %q", ErrUnknownKind, kind)
 	}
 	return f(), nil
+}
+
+// FieldTypeRoute declares which ES field types an index Kind handles.
+// The translator (embedded/translator.go) consults this table to decide
+// which index path to take for each field (D3: Index Registry declarative
+// routing).
+// @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.1.4
+type FieldTypeRoute struct {
+	Kind         IndexKind
+	ESFieldTypes []meta.FieldType
+}
+
+// fieldRoutes is the declarative routing table. Order matters: the first
+// matching Kind wins when multiple kinds could apply (none currently do,
+// but the rule guards future additions).
+var fieldRoutes = []FieldTypeRoute{
+	{Kind: KindHNSW, ESFieldTypes: []meta.FieldType{meta.TypeDenseVector}},
+	{Kind: KindInverted, ESFieldTypes: []meta.FieldType{meta.TypeText}},
+	{Kind: KindBKD, ESFieldTypes: []meta.FieldType{meta.TypeLong, meta.TypeDate, meta.TypeDouble, meta.TypeIP, meta.TypeGeoPoint}},
+	{Kind: KindBitmap, ESFieldTypes: []meta.FieldType{meta.TypeKeyword, meta.TypeBoolean}},
+}
+
+// RouteForField returns the index Kinds applicable to the given ES field
+// type. Returns an empty slice for unsupported/unknown types (the caller
+// falls back to a full scan).
+func RouteForField(esType meta.FieldType) []IndexKind {
+	var kinds []IndexKind
+	for _, r := range fieldRoutes {
+		for _, t := range r.ESFieldTypes {
+			if t == esType {
+				kinds = append(kinds, r.Kind)
+				break
+			}
+		}
+	}
+	return kinds
 }

@@ -215,11 +215,181 @@ func TestR16_WindowSizeTruncation(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestR16_UnsupportedMethod(t *testing.T) {
+	// relative_score is now supported (deep-gap-remediation).
 	_, err := NewFusion(dsl.RankSpec{Method: "relative_score"})
-	assert.ErrorIs(t, err, ErrUnsupportedMethod)
+	assert.NoError(t, err)
 
+	// rerank (external HTTP) is still unsupported.
 	_, err = NewFusion(dsl.RankSpec{Method: "rerank"})
 	assert.ErrorIs(t, err, ErrUnsupportedMethod)
+}
+
+// ---------------------------------------------------------------------------
+// DBSF (Distribution-Based Score Fusion) tests.
+// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.2
+// ---------------------------------------------------------------------------
+
+func TestDBSF_Correctness(t *testing.T) {
+	// Path A: doc1=0.0, doc2=0.5, doc3=1.0 → mean=0.5, var=1/6, stddev≈0.4082
+	// Path B: doc2=2.0, doc3=4.0, doc4=6.0 → mean=4.0, var=8/3, stddev≈1.6330
+	// k=3.0, equal weights (0.5, 0.5)
+	//
+	// z-A: doc1=(0.0-0.5)/(3*0.4082)≈-0.4082, doc2=0.0, doc3≈0.4082
+	// z-B: doc2=(2.0-4.0)/(3*1.6330)≈-0.4082, doc3=0.0, doc4≈0.4082
+	//
+	// final (equal weights 0.5):
+	//   doc1: 0.5*(-0.4082)+0           = -0.2041
+	//   doc2: 0.5*0.0+0.5*(-0.4082)     = -0.2041
+	//   doc3: 0.5*0.4082+0.5*0.0        =  0.2041
+	//   doc4: 0+0.5*0.4082              =  0.2041
+	//
+	// Sorted desc (ties by smaller DocID): doc3, doc4, doc1, doc2
+	pathA := []ScoredDoc{{DocID: 1, Score: 0.0}, {DocID: 2, Score: 0.5}, {DocID: 3, Score: 1.0}}
+	pathB := []ScoredDoc{{DocID: 2, Score: 2.0}, {DocID: 3, Score: 4.0}, {DocID: 4, Score: 6.0}}
+
+	f, err := NewFusion(dsl.RankSpec{Method: dsl.RankMethodDBSF})
+	require.NoError(t, err)
+
+	merged, err := f.Merge([][]ScoredDoc{pathA, pathB})
+	require.NoError(t, err)
+	require.Len(t, merged, 4)
+
+	// doc3 and doc4 should have the highest (positive) scores.
+	assert.True(t, merged[0].Score > 0, "top result should have positive score")
+	assert.True(t, merged[1].Score > 0, "second result should have positive score")
+	// doc1 and doc2 should have the lowest (negative) scores.
+	assert.True(t, merged[2].Score < 0, "third result should have negative score")
+	assert.True(t, merged[3].Score < 0, "fourth result should have negative score")
+	// Ties broken by smaller DocID.
+	assert.Equal(t, []uint64{3, 4, 1, 2}, docIDOrder(merged))
+}
+
+func TestDBSF_ExplicitWeights(t *testing.T) {
+	pathA := []ScoredDoc{{DocID: 1, Score: 0.0}, {DocID: 2, Score: 0.5}, {DocID: 3, Score: 1.0}}
+	pathB := []ScoredDoc{{DocID: 2, Score: 2.0}, {DocID: 3, Score: 4.0}, {DocID: 4, Score: 6.0}}
+
+	f, err := NewFusion(dsl.RankSpec{
+		Method:  dsl.RankMethodDBSF,
+		Weights: []float64{0.7, 0.3},
+	})
+	require.NoError(t, err)
+
+	merged, err := f.Merge([][]ScoredDoc{pathA, pathB})
+	require.NoError(t, err)
+	require.Len(t, merged, 4)
+
+	// With weight 0.7 on A: doc3 (high in A) should rank first.
+	assert.Equal(t, uint64(3), merged[0].DocID, "doc3 should rank first with 0.7 weight on path A")
+}
+
+func TestDBSF_WeightMismatch(t *testing.T) {
+	f, err := NewFusion(dsl.RankSpec{
+		Method:  dsl.RankMethodDBSF,
+		Weights: []float64{0.5, 0.3, 0.2}, // 3 weights for 2 paths
+	})
+	require.NoError(t, err)
+
+	_, err = f.Merge([][]ScoredDoc{
+		{{DocID: 1, Score: 1.0}},
+		{{DocID: 2, Score: 2.0}},
+	})
+	assert.ErrorIs(t, err, ErrWeightsMismatch)
+}
+
+func TestDBSF_SinglePath(t *testing.T) {
+	// Single path: DBSF should still produce z-score normalized results.
+	pathA := []ScoredDoc{{DocID: 1, Score: 0.0}, {DocID: 2, Score: 1.0}, {DocID: 3, Score: 2.0}}
+
+	f, err := NewFusion(dsl.RankSpec{Method: dsl.RankMethodDBSF})
+	require.NoError(t, err)
+
+	merged, err := f.Merge([][]ScoredDoc{pathA})
+	require.NoError(t, err)
+	require.Len(t, merged, 3)
+
+	// mean=1.0, stddev≈0.8165, k=3.0
+	// z: doc1=(0-1)/(3*0.8165)≈-0.4082, doc2=0, doc3≈0.4082
+	// doc3 should be first (highest z-score).
+	assert.Equal(t, uint64(3), merged[0].DocID)
+	assert.Equal(t, uint64(2), merged[1].DocID)
+	assert.Equal(t, uint64(1), merged[2].DocID)
+}
+
+func TestDBSF_AllSameScores(t *testing.T) {
+	// All same scores → stddev=0 → z-score=0 for all → equal scores.
+	pathA := []ScoredDoc{{DocID: 1, Score: 5.0}, {DocID: 2, Score: 5.0}, {DocID: 3, Score: 5.0}}
+
+	f, err := NewFusion(dsl.RankSpec{Method: dsl.RankMethodDBSF})
+	require.NoError(t, err)
+
+	merged, err := f.Merge([][]ScoredDoc{pathA})
+	require.NoError(t, err)
+	require.Len(t, merged, 3)
+
+	// All scores should be 0 (z-score of a constant is 0).
+	for _, d := range merged {
+		assert.True(t, float32Abs(d.Score) < 1e-5, "constant scores should normalize to 0, got %v", d.Score)
+	}
+}
+
+func TestDBSF_EmptyPaths(t *testing.T) {
+	f, err := NewFusion(dsl.RankSpec{Method: dsl.RankMethodDBSF})
+	require.NoError(t, err)
+
+	merged, err := f.Merge(nil)
+	require.NoError(t, err)
+	assert.Empty(t, merged)
+}
+
+func TestDBSF_WindowTruncation(t *testing.T) {
+	// Window=2: only first 2 docs per path contribute to statistics and fusion.
+	pathA := []ScoredDoc{{DocID: 1, Score: 0.0}, {DocID: 2, Score: 10.0}, {DocID: 3, Score: 100.0}}
+
+	f, err := NewFusion(dsl.RankSpec{Method: dsl.RankMethodDBSF, WindowSize: 2})
+	require.NoError(t, err)
+
+	merged, err := f.Merge([][]ScoredDoc{pathA})
+	require.NoError(t, err)
+	require.Len(t, merged, 2, "only 2 docs should survive window truncation")
+
+	// doc3 (score=100) should be truncated out.
+	for _, d := range merged {
+		assert.NotEqual(t, uint64(3), d.DocID, "doc3 should be truncated")
+	}
+}
+
+func TestDBSF_RobustnessVsWeighted(t *testing.T) {
+	// Key property of DBSF: a consistently good document (high in both
+	// paths) should rank higher than a document that's only high in one
+	// path, even if the latter has a higher raw score.
+	// Path A: doc1=0.0, doc2=1.0, doc3=2.0, doc4=3.0 (doc4 highest in A)
+	// Path B: doc1=5.0, doc2=6.0, doc3=7.0 (doc3 highest in B, doc4 absent)
+	//
+	// DBSF should rank doc3 first (consistently high across paths),
+	// while doc4 (high only in A, absent in B) ranks second.
+	pathA := []ScoredDoc{
+		{DocID: 1, Score: 0.0},
+		{DocID: 2, Score: 1.0},
+		{DocID: 3, Score: 2.0},
+		{DocID: 4, Score: 3.0},
+	}
+	pathB := []ScoredDoc{
+		{DocID: 1, Score: 5.0},
+		{DocID: 2, Score: 6.0},
+		{DocID: 3, Score: 7.0},
+	}
+
+	dbsf, err := NewFusion(dsl.RankSpec{Method: dsl.RankMethodDBSF})
+	require.NoError(t, err)
+	dbsfMerged, err := dbsf.Merge([][]ScoredDoc{pathA, pathB})
+	require.NoError(t, err)
+
+	dbsfOrder := docIDOrder(dbsfMerged)
+
+	// doc3 (consistently high in both paths) should rank first.
+	assert.Equal(t, uint64(3), dbsfOrder[0], "consistently good doc3 should rank first in DBSF")
+	// doc4 (high only in A, absent from B) should rank second, not first.
+	assert.Equal(t, uint64(4), dbsfOrder[1], "doc4 should rank second (high in A only)")
 }
 
 // ---------------------------------------------------------------------------

@@ -41,6 +41,10 @@ func Optimize(plan LogicalPlan, sel EstimatedSelectivity, k int) (LogicalPlan, s
 	// R6: BM25 segment upper-bound pruning (M0 marker only — actual
 	// pruning happens at execute time when segments report maxScore).
 	plan = applyR6(plan, &sb)
+	// F6 R8: projection selection — replace Scan with ProjectionScan
+	// when an aggregate projection matches the query's GROUP BY.
+	// @spec: 02_spec.md#7.5
+	plan = applyR8(plan, &sb)
 	return plan, sb.String()
 }
 
@@ -199,6 +203,36 @@ func applyR6(plan LogicalPlan, trace *strings.Builder) LogicalPlan {
 		return p
 	default:
 		fmt.Fprintln(trace, "R6: noop")
+		return p
+	}
+}
+
+// applyR8 — F6 projection selection. When an Aggregate node's GROUP BY
+// and sub-aggregations match a defined aggregate projection, the input
+// Scan is replaced with a ProjectionScan that reads pre-computed state.
+// @spec: 02_spec.md#7.5
+func applyR8(plan LogicalPlan, trace *strings.Builder) LogicalPlan {
+	switch p := plan.(type) {
+	case *Aggregate:
+		// Check if the aggregate can be served by a projection.
+		// TODO(F6): when projection metadata is wired through, match
+		// GroupField + Aggs against ProjectionDef and replace Input
+		// Scan with ProjectionScan. For now, log and pass through.
+		fmt.Fprintln(trace, "R8: noop (no projection metadata available)")
+		return p
+	case *TopN:
+		p.Input = applyR8(p.Input, trace)
+		return p
+	case *Filter:
+		p.Input = applyR8(p.Input, trace)
+		return p
+	case *Fusion:
+		for i, in := range p.Inputs {
+			p.Inputs[i] = applyR8(in, trace)
+		}
+		return p
+	default:
+		fmt.Fprintln(trace, "R8: noop")
 		return p
 	}
 }

@@ -75,6 +75,44 @@ func (pl *PostingList) DocFreq() int {
 	return int(pl.docIDs.GetCardinality())
 }
 
+// FilterAndRemap returns a new PostingList with deleted docIDs removed and
+// surviving docIDs remapped via rowMap. rowMap[oldDocID] = newDocID for
+// surviving rows; deleted rows are skipped. @spec: 02_spec.md#2.4
+func (pl *PostingList) FilterAndRemap(deletes *roaring.Bitmap, rowMap []uint32) *PostingList {
+	if pl == nil || pl.docIDs == nil {
+		return &PostingList{docIDs: roaring.New()}
+	}
+	newDocIDs := roaring.New()
+	var newTfs []uint8
+	var newFldLens []uint16
+	var newPositions [][]uint16
+
+	it := pl.Iterate()
+	for it.HasNext() {
+		p := it.Next()
+		// Skip deleted docIDs.
+		if deletes != nil && deletes.Contains(p.DocID) {
+			continue
+		}
+		// Remap docID using rowMap.
+		if int(p.DocID) >= len(rowMap) {
+			continue // defensive: docID out of range
+		}
+		newDocID := rowMap[p.DocID]
+		newDocIDs.Add(newDocID)
+		newTfs = append(newTfs, p.TF)
+		newFldLens = append(newFldLens, p.FieldLen)
+		newPositions = append(newPositions, p.Positions)
+	}
+
+	return &PostingList{
+		docIDs:    newDocIDs,
+		tfs:       newTfs,
+		fldLens:   newFldLens,
+		positions: newPositions,
+	}
+}
+
 // DocIDs returns the roaring bitmap of matching doc ids. Callers must
 // not mutate it.
 func (pl *PostingList) DocIDs() *roaring.Bitmap {

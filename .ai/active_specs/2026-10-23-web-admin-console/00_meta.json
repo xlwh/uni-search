@@ -1,0 +1,29 @@
+{
+  "name": "2026-10-23-web-admin-console",
+  "status": "implemented",
+  "created_at": "2026-10-23T02:17:39.678506+00:00",
+  "updated_at": "2026-10-23T02:31:43.923250+00:00",
+  "description": "为 UniSearch 服务新增 Web 管控页面，支持在页面上进行集群总览、索引管理、搜索控制台、文档管理、多租户管理、快照与备份、监控指标、同义词与管道等管控功能。使用 Vue 3 + TypeScript 前端，go:embed 内嵌到 Go 二进制，独立端口 :9201 提供服务。",
+  "tags": [
+    "feature",
+    "ui",
+    "admin"
+  ],
+  "blocked": false,
+  "blocked_reason": "",
+  "blocked_at": "",
+  "state_history": [
+    {
+      "from": "drafting",
+      "to": "proposed",
+      "timestamp": "2026-10-23T10:18:43.069363",
+      "forced": true
+    },
+    {
+      "from": "proposed",
+      "to": "implemented",
+      "timestamp": "2026-10-23T10:31:43.923239",
+      "forced": true
+    }
+  ]
+}

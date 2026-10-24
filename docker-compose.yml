@@ -1,0 +1,93 @@
+# docker-compose for UniSearch cluster integration testing (design 06 §5.1).
+# Deploys: 3 meta nodes (Raft), 2 shard nodes, 1 Jaeger (tracing).
+# MinIO is optional — shard nodes degrade to local storage if S3 is unavailable.
+# @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#docker-compose
+
+x-unisearch-base: &unisearch-base
+  build: .
+  image: unisearch:latest
+
+services:
+  # --- Meta nodes (Raft cluster, 3 nodes for quorum) ---
+  meta-1:
+    <<: *unisearch-base
+    container_name: meta-1
+    hostname: meta-1
+    command: ["--cloud", "--role", "meta", "--node-id", "meta-1", "--raft-addr", ":9300", "--raft-peers", "meta-1@meta-1:9300,meta-2@meta-2:9300,meta-3@meta-3:9300", "--data-dir", "/data", "--listen", ":9200"]
+    ports: ["9201:9200", "9301:9300"]
+    volumes: ["meta-1-data:/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  meta-2:
+    <<: *unisearch-base
+    container_name: meta-2
+    hostname: meta-2
+    command: ["--cloud", "--role", "meta", "--node-id", "meta-2", "--raft-addr", ":9300", "--raft-peers", "meta-1@meta-1:9300,meta-2@meta-2:9300,meta-3@meta-3:9300", "--data-dir", "/data", "--listen", ":9200"]
+    ports: ["9202:9200", "9302:9300"]
+    volumes: ["meta-2-data:/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  meta-3:
+    <<: *unisearch-base
+    container_name: meta-3
+    hostname: meta-3
+    command: ["--cloud", "--role", "meta", "--node-id", "meta-3", "--raft-addr", ":9300", "--raft-peers", "meta-1@meta-1:9300,meta-2@meta-2:9300,meta-3@meta-3:9300", "--data-dir", "/data", "--listen", ":9200"]
+    ports: ["9203:9200", "9303:9300"]
+    volumes: ["meta-3-data:/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # --- Shard nodes (store data, serve queries) ---
+  shard-1:
+    <<: *unisearch-base
+    container_name: shard-1
+    command: ["--cloud", "--role", "shard", "--node-id", "shard-1", "--meta-addrs", "meta-1:9200,meta-2:9200,meta-3:9200", "--grpc-addr", ":9300", "--advertise-addr", "shard-1:9300", "--data-dir", "/data", "--listen", ":9200"]
+    ports: ["9211:9200", "9311:9300"]
+    volumes: ["shard-1-data:/data"]
+    depends_on:
+      meta-1: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  shard-2:
+    <<: *unisearch-base
+    container_name: shard-2
+    command: ["--cloud", "--role", "shard", "--node-id", "shard-2", "--meta-addrs", "meta-1:9200,meta-2:9200,meta-3:9200", "--grpc-addr", ":9300", "--advertise-addr", "shard-2:9300", "--data-dir", "/data", "--listen", ":9200"]
+    ports: ["9212:9200", "9312:9300"]
+    volumes: ["shard-2-data:/data"]
+    depends_on:
+      meta-1: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # --- Jaeger (OTel tracing, design 06 §2) ---
+  jaeger:
+    image: jaegertracing/all-in-one:1.55
+    container_name: jaeger
+    ports: ["16686:16686", "4317:4317"]
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
+volumes:
+  meta-1-data:
+  meta-2-data:
+  meta-3-data:
+  shard-1-data:
+  shard-2-data:

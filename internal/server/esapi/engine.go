@@ -24,11 +24,13 @@ const (
 
 // IndexDoc is one document in a write batch.
 type IndexDoc struct {
-	Op      DocOp
-	Index   string
-	ID      string
-	Source  []byte
-	IfSeqNo *int64 // when set, optimistic locking (409 on mismatch)
+	Op            DocOp
+	Index         string
+	ID            string
+	Source        []byte
+	IfSeqNo       *int64 // when set, optimistic locking (409 on mismatch)
+	IfPrimaryTerm  int64 // @spec: deep-gap-remediation 02_spec.md#2.3.5
+	Pipeline      string // @spec: es-feature-gap-fill 02_spec.md#2.7
 }
 
 // WriteResult is the per-document outcome of Index/Bulk.
@@ -51,18 +53,24 @@ type SearchHit struct {
 	SeqNo      int64
 	Primary    int64
 	SortValues []any
+	Highlight  map[string][]string // M1: per-field highlight fragments
+	Fields     map[string]any       // P2: script_fields + runtime_mappings results
 }
 
 // SearchResult is the engine-side search outcome; the handler
 // reshapes it into the ES 8.x response skeleton (§6.2).
 type SearchResult struct {
-	Took     int
-	TimedOut bool
-	Shards   ShardStats
-	Total    int
-	Relation string // "eq" | "gte"
-	MaxScore *float32
-	Hits     []SearchHit
+	Took         int
+	TimedOut     bool
+	Shards       ShardStats
+	Total        int
+	Relation     string // "eq" | "gte"
+	MaxScore     *float32
+	Hits         []SearchHit
+	Aggregations map[string]any // M1: aggregation results (nil when no aggs)
+	Highlight    map[string]map[string][]string // M1: per-field highlight fragments (nil when no highlight)
+	Suggest      map[string]any // @spec: deep-gap-remediation 02_spec.md#2.3.4
+	Profile      map[string]any // @spec: deep-gap-remediation 02_spec.md#2.3.4
 }
 
 // ShardStats is the _shards block of the search response.
@@ -75,15 +83,15 @@ type ShardStats struct {
 
 // IndexInfo is the row returned by _cat/indices.
 type IndexInfo struct {
-	Health      string
-	Status      string
-	Index       string
-	UUID        string
-	Primaries   int
-	Replicas    int
-	DocsCount   int64
-	DocsDeleted int64
-	StoreSize   string
+	Health      string `json:"health"`
+	Status      string `json:"status"`
+	Index       string `json:"index"`
+	UUID        string `json:"uuid"`
+	Primaries   int    `json:"primaries"`
+	Replicas    int    `json:"replicas"`
+	DocsCount   int64  `json:"docs_count"`
+	DocsDeleted int64  `json:"docs_deleted"`
+	StoreSize   string `json:"store_size"`
 }
 
 // ClusterHealth is the _cluster/health body.
@@ -145,12 +153,16 @@ type Engine interface {
 	// GetMapping returns the stored mapping JSON for an index.
 	GetMapping(ctx context.Context, index string) ([]byte, error)
 
+	// DeleteIndex removes an index and all its data.
+	DeleteIndex(ctx context.Context, index string) error
+
 	// PutSettings applies a settings body subset (M0 ignores most).
 	PutSettings(ctx context.Context, index string, body []byte) error
 	GetSettings(ctx context.Context, index string) ([]byte, error)
 
 	// PutAlias / GetAliases manage the alias table.
 	PutAlias(ctx context.Context, index, alias string) error
+	RemoveAlias(ctx context.Context, index, alias string) error
 	GetAliases(ctx context.Context, index string) (map[string][]string, error)
 
 	// Analyze runs the analyzer for one (index?, field?, text).
@@ -165,6 +177,11 @@ type Engine interface {
 
 	// Health returns the cluster health snapshot.
 	Health(ctx context.Context) (*ClusterHealth, error)
+
+	// CurrentSnapshot returns the current visibility watermark for
+	// the given indices, used by PIT to pin a consistent read view.
+	// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#2.2.1
+	CurrentSnapshot(ctx context.Context, indices []string) (types.Snapshot, error)
 }
 
 // GetRequest is one entry of an _mget batch.
@@ -213,11 +230,13 @@ func (EngineNoop) Count(context.Context, []string, []byte) (int64, error) {
 }
 func (EngineNoop) PutMapping(context.Context, string, []byte) error   { return errNotImplemented }
 func (EngineNoop) GetMapping(context.Context, string) ([]byte, error) { return nil, errNotImplemented }
+func (EngineNoop) DeleteIndex(context.Context, string) error          { return errNotImplemented }
 func (EngineNoop) PutSettings(context.Context, string, []byte) error  { return errNotImplemented }
 func (EngineNoop) GetSettings(context.Context, string) ([]byte, error) {
 	return nil, errNotImplemented
 }
-func (EngineNoop) PutAlias(context.Context, string, string) error { return errNotImplemented }
+func (EngineNoop) PutAlias(context.Context, string, string) error    { return errNotImplemented }
+func (EngineNoop) RemoveAlias(context.Context, string, string) error { return errNotImplemented }
 func (EngineNoop) GetAliases(context.Context, string) (map[string][]string, error) {
 	return nil, errNotImplemented
 }
@@ -229,6 +248,9 @@ func (EngineNoop) Indices(context.Context, string) ([]IndexInfo, error) {
 	return nil, errNotImplemented
 }
 func (EngineNoop) Health(context.Context) (*ClusterHealth, error) { return nil, errNotImplemented }
+func (EngineNoop) CurrentSnapshot(context.Context, []string) (types.Snapshot, error) {
+	return types.NewSnapshot(0), errNotImplemented
+}
 
 // versionInfo is the static version block returned by GET /.
 var versionInfo = map[string]any{

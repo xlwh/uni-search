@@ -19,6 +19,7 @@ package fusion
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/unisearch-db/unisearch/internal/engine/dsl"
@@ -72,10 +73,15 @@ func NewFusion(spec dsl.RankSpec) (Fusion, error) {
 		return &RRFFusion{K: spec.RankConst, Window: spec.WindowSize}, nil
 	case dsl.RankMethodWeighted:
 		if len(spec.Weights) == 0 {
-			// Equal weights by default.
 			return &WeightedFusion{Weights: nil, Window: spec.WindowSize}, nil
 		}
 		return &WeightedFusion{Weights: append([]float64(nil), spec.Weights...), Window: spec.WindowSize}, nil
+	case dsl.RankMethodRelativeScore:
+		// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#2.2.4
+		return &RelativeScoreFusion{Window: spec.WindowSize}, nil
+	case dsl.RankMethodDBSF:
+		// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.2
+		return &DBSFFusion{Weights: append([]float64(nil), spec.Weights...), Window: spec.WindowSize, K: 3.0}, nil
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedMethod, spec.Method)
 	}
@@ -180,6 +186,177 @@ func (f *WeightedFusion) Merge(cands [][]ScoredDoc) ([]ScoredDoc, error) {
 	return out, nil
 }
 
+// RelativeScoreFusion implements the §5 relative_score fusion: the
+// first path (BM25) is the baseline; other paths' scores are mapped
+// to the baseline's [min, max] range via min-max normalization, then
+// summed: score(d) = baseline(d) + Σ_mapped ŝ_i(d).
+// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#2.2.4
+type RelativeScoreFusion struct {
+	Window int
+}
+
+func (f *RelativeScoreFusion) Merge(cands [][]ScoredDoc) ([]ScoredDoc, error) {
+	if len(cands) == 0 {
+		return nil, nil
+	}
+	if f.Window <= 0 {
+		f.Window = dsl.DefaultWindowSize
+	}
+	// Truncate each path to Window.
+	for i := range cands {
+		if len(cands[i]) > f.Window {
+			cands[i] = cands[i][:f.Window]
+		}
+	}
+	// Path 0 = baseline (BM25). Compute its min/max.
+	baseline := cands[0]
+	if len(baseline) == 0 {
+		// No baseline: fall back to simple sum of normalized scores.
+		return (&WeightedFusion{Window: f.Window}).Merge(cands)
+	}
+	bMin, bMax := baseline[0].Score, baseline[0].Score
+	for _, d := range baseline {
+		if d.Score < bMin {
+			bMin = d.Score
+		}
+		if d.Score > bMax {
+			bMax = d.Score
+		}
+	}
+	bRange := bMax - bMin
+	if bRange <= 0 {
+		bRange = 1 // avoid div-by-zero when all baseline scores equal
+	}
+	// Build score map: docID → combined score.
+	scores := make(map[uint64]float32)
+	for _, d := range baseline {
+		scores[d.DocID] = d.Score
+	}
+	// Map each non-baseline path to baseline range and add.
+	for i := 1; i < len(cands); i++ {
+		path := cands[i]
+		if len(path) == 0 {
+			continue
+		}
+		// Min-max normalize this path, then scale to baseline range.
+		pMin, pMax := path[0].Score, path[0].Score
+		for _, d := range path {
+			if d.Score < pMin {
+				pMin = d.Score
+			}
+			if d.Score > pMax {
+				pMax = d.Score
+			}
+		}
+		pRange := pMax - pMin
+		if pRange <= 0 {
+			pRange = 1
+		}
+		for _, d := range path {
+			// Normalize to [0,1] then scale to baseline range.
+			mapped := (d.Score - pMin) / pRange * bRange
+			scores[d.DocID] += mapped
+		}
+	}
+	out := make([]ScoredDoc, 0, len(scores))
+	for doc, s := range scores {
+		out = append(out, ScoredDoc{DocID: doc, Score: s})
+	}
+	sortDesc(out)
+	return out, nil
+}
+
+// DBSFFusion implements Distribution-Based Score Fusion: per-path scores
+// are z-score normalized using Welford's online variance algorithm, then
+// combined as a weighted sum. Unlike WeightedFusion's min-max normalization,
+// z-score normalization is robust against extreme outliers.
+//
+// z-score(d, path_i) = (score_i(d) - mean_i) / (k * stddev_i)
+// final_score(d) = Σ_i weight_i * z-score(d, path_i)
+//
+// Documents not appearing in a path contribute 0 (the mean) for that path.
+// The normalization factor k (default 3.0) maps ±3σ to approximately [-1, 1].
+//
+// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.2
+type DBSFFusion struct {
+	Weights []float64 // per-path weights; nil → equal 1/n
+	Window  int       // per-path truncation before statistics
+	K       float64   // normalization factor; default 3.0
+}
+
+// Merge implements Fusion.
+func (f *DBSFFusion) Merge(cands [][]ScoredDoc) ([]ScoredDoc, error) {
+	if len(cands) == 0 {
+		return nil, nil
+	}
+	if f.Window <= 0 {
+		f.Window = 500
+	}
+	if f.K <= 0 {
+		f.K = 3.0
+	}
+
+	n := len(cands)
+	weights := f.Weights
+	if len(weights) == 0 {
+		weights = make([]float64, n)
+		for i := range weights {
+			weights[i] = 1.0 / float64(n)
+		}
+	} else if len(weights) != n {
+		return nil, ErrWeightsMismatch
+	}
+
+	// 1. Truncate each path to Window entries.
+	truncated := make([][]ScoredDoc, n)
+	for i, path := range cands {
+		if len(path) > f.Window {
+			truncated[i] = path[:f.Window]
+		} else {
+			truncated[i] = path
+		}
+	}
+
+	// 2. Per-path mean and variance (Welford single-pass).
+	type stats struct{ mean, m2 float64; count int }
+	pathStats := make([]stats, n)
+	for i, path := range truncated {
+		s := stats{}
+		for _, d := range path {
+			s.count++
+			delta := float64(d.Score) - s.mean
+			s.mean += delta / float64(s.count)
+			s.m2 += delta * (float64(d.Score) - s.mean)
+		}
+		pathStats[i] = s
+	}
+
+	// 3. Z-score normalize and weighted sum per document.
+	scoreMap := make(map[uint64]float64)
+	for i, path := range truncated {
+		s := pathStats[i]
+		var stddev float64
+		if s.count > 1 && s.m2 > 0 {
+			stddev = math.Sqrt(s.m2 / float64(s.count))
+		}
+		for _, d := range path {
+			var z float64
+			if stddev > 0 {
+				z = (float64(d.Score) - s.mean) / (f.K * stddev)
+			}
+			scoreMap[d.DocID] += weights[i] * z
+		}
+	}
+
+	// 4. Collect and sort descending; ties broken by smaller DocID.
+	out := make([]ScoredDoc, 0, len(scoreMap))
+	for doc, s := range scoreMap {
+		out = append(out, ScoredDoc{DocID: doc, Score: float32(s)})
+	}
+	sortDesc(out)
+	return out, nil
+}
+
 // sortDesc sorts by descending Score with a stable tie-break on
 // the smaller DocID so fusion output is deterministic across runs.
 func sortDesc(s []ScoredDoc) {
@@ -210,4 +387,5 @@ func ValidateFromSize(from, size int) error {
 var (
 	_ Fusion = (*RRFFusion)(nil)
 	_ Fusion = (*WeightedFusion)(nil)
+	_ Fusion = (*DBSFFusion)(nil)
 )

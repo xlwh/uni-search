@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apierr "github.com/unisearch-db/unisearch/internal/errors"
+	"github.com/unisearch-db/unisearch/pkg/types"
 )
 
 // ---------------------------------------------------------------------------
@@ -161,6 +162,10 @@ func (m *mockEngine) GetMapping(_ context.Context, _ string) ([]byte, error) {
 	return m.mappingGet, m.mappingErr
 }
 
+func (m *mockEngine) DeleteIndex(_ context.Context, _ string) error {
+	return nil
+}
+
 func (m *mockEngine) PutSettings(context.Context, string, []byte) error { return m.settingsErr }
 func (m *mockEngine) GetSettings(context.Context, string) ([]byte, error) {
 	return m.mappingGet, m.mappingErr
@@ -169,6 +174,10 @@ func (m *mockEngine) GetSettings(context.Context, string) ([]byte, error) {
 func (m *mockEngine) PutAlias(_ context.Context, idx, alias string) error {
 	m.aliasCalls = append(m.aliasCalls, struct{ Index, Alias string }{idx, alias})
 	return m.aliasErr
+}
+
+func (m *mockEngine) RemoveAlias(_ context.Context, idx, alias string) error {
+	return nil
 }
 
 func (m *mockEngine) GetAliases(_ context.Context, _ string) (map[string][]string, error) {
@@ -187,6 +196,10 @@ func (m *mockEngine) Indices(context.Context, string) ([]IndexInfo, error) {
 
 func (m *mockEngine) Health(context.Context) (*ClusterHealth, error) {
 	return m.healthRes, m.healthErr
+}
+
+func (m *mockEngine) CurrentSnapshot(context.Context, []string) (types.Snapshot, error) {
+	return types.NewSnapshot(0), nil
 }
 
 // ---------------------------------------------------------------------------

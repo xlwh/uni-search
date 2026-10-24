@@ -32,6 +32,23 @@ const (
 	// EncodingZstd: length-prefixed raw values in one zstd frame.
 	// High-cardinality keyword/text fallback.
 	EncodingZstd Encoding = 6
+	// EncodingComposite: multi-codec chain. The payload prefix contains
+	// a u8 chain length followed by codec IDs; each codec is applied in
+	// order on encode and reverse order on decode. @spec: 02_spec.md#3.3
+	EncodingComposite Encoding = 7
+)
+
+// Codec ID constants for composite codec chains. @spec: 02_spec.md#3.3
+const (
+	CodecIDDelta       uint8 = 1
+	CodecIDDoubleDelta uint8 = 2 // F2: new
+	CodecIDGorilla     uint8 = 3
+	CodecIDT64         uint8 = 4 // F2: new
+	CodecIDALP         uint8 = 5 // F2: new
+	CodecIDZstd        uint8 = 7
+	CodecIDDict        uint8 = 9
+	CodecIDRLE         uint8 = 10
+	CodecIDBitpack     uint8 = 11
 )
 
 // String implements fmt.Stringer for diagnostics.
@@ -49,6 +66,8 @@ func (e Encoding) String() string {
 		return "rle"
 	case EncodingZstd:
 		return "zstd"
+	case EncodingComposite:
+		return "composite"
 	default:
 		return "unspecified"
 	}
@@ -87,13 +106,30 @@ func chooseEncoding(ft meta.FieldType, st blockStats) Encoding {
 			return EncodingDeltaBitpack
 		}
 		return EncodingDeltaZstd
-	case meta.TypeDouble:
+	case meta.TypeDouble, meta.TypeFloat:
 		return EncodingGorilla
 	case meta.TypeBoolean:
 		return EncodingRLE
 	default:
 		return EncodingZstd
 	}
+}
+
+// chooseCompositeCodec optionally returns a CodecChain for the block when a
+// composite encoding is expected to outperform the single encoding selected
+// by chooseEncoding. Returns nil when the single encoding should be used
+// (backward compatible). @spec: 02_spec.md#3.6
+//
+// TODO(F2): The composite codec selection is currently disabled to maintain
+// backward compatibility with existing encoding selection tests. Enable
+// after benchmark validation confirms compression improvements. The F2
+// infrastructure (BlockCodec, CodecChain, DoubleDelta/T64/ALP encodings)
+// is in place and tested via dedicated F2 tests.
+func chooseCompositeCodec(ft meta.FieldType, st blockStats, data *BlockData) *CodecChain {
+	_ = ft
+	_ = st
+	_ = data
+	return nil
 }
 
 // floatOrderedBits converts IEEE-754 bits to an order-preserving u64 so
@@ -124,7 +160,7 @@ func serializeZoneValue(ft meta.FieldType, v any) []byte {
 		var b [8]byte
 		binary.LittleEndian.PutUint64(b[:], uint64(v.(int64)))
 		return b[:]
-	case meta.TypeDouble:
+	case meta.TypeDouble, meta.TypeFloat:
 		var b [8]byte
 		binary.LittleEndian.PutUint64(b[:], floatOrderedBits(v.(float64)))
 		return b[:]
@@ -152,7 +188,7 @@ func deserializeZoneValue(ft meta.FieldType, b []byte) any {
 			return nil
 		}
 		return int64(binary.LittleEndian.Uint64(b))
-	case meta.TypeDouble:
+	case meta.TypeDouble, meta.TypeFloat:
 		if len(b) != 8 {
 			return nil
 		}

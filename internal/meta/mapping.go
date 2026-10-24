@@ -22,6 +22,7 @@ const (
 	TypeText         FieldType = "text"
 	TypeLong         FieldType = "long"
 	TypeDouble       FieldType = "double"
+	TypeFloat        FieldType = "float"
 	TypeDate         FieldType = "date"
 	TypeBoolean      FieldType = "boolean"
 	TypeIP           FieldType = "ip"
@@ -41,6 +42,7 @@ const (
 	ElementFloat32  VectorElement = "float32"
 	ElementInt8     VectorElement = "int8"
 	ElementBFloat16 VectorElement = "bfloat16"
+	ElementFloat16  VectorElement = "float16" // @spec: qdrant-features-import F4
 )
 
 // DynamicMode controls how writes treat fields absent from the mapping

@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package unisearch;
+
+option go_package = "github.com/unisearch-db/unisearch/api/proto;unisearchpb";
+
+service ShardService {
+  rpc Write(WriteBatch) returns (WriteAck);
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc SearchStream(SubPlan) returns (stream LocalResult);  // @spec: deep-gap-remediation
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc PullWAL(WALCursor) returns (stream LogChunk);
+  rpc Snapshot(SnapshotRequest) returns (SnapshotMeta);
+}
+
+// SubPlan is a serialized physical sub-plan for MPP shard execution
+// (design 05 §7: SearchStream).
+message SubPlan {
+  bytes plan_data = 1;   // serialized physical plan
+  uint64 shard_id = 2;
+  uint64 read_up_to = 3; // MVCC snapshot watermark
+}
+
+// LocalResult is one chunk of per-shard search results streamed back
+// to the coordinator (design 05 §7).
+message LocalResult {
+  repeated SearchHit hits = 1;
+  bytes partial_state = 2;  // serialized PartialState (aggregation)
+  bool final = 3;           // true = last chunk for this shard
+}
+
+message WriteBatch {
+  string index = 1;
+  repeated WriteOp ops = 2;
+  bool refresh = 3;
+}
+
+message WriteOp {
+  string kind = 1;  // "index" | "delete" | "update"
+  string id = 2;
+  bytes doc = 3;
+}
+
+message WriteAck {
+  int64 seq_no = 1;
+  bool success = 2;
+  string error = 3;
+  repeated WriteResult results = 4;
+}
+
+message WriteResult {
+  string id = 1;
+  string result = 2;  // "created" | "updated" | "deleted" | "conflict"
+  int64 seq_no = 3;
+}
+
+message SearchRequest {
+  repeated string indices = 1;
+  bytes body = 2;  // raw ES search request JSON
+}
+
+message SearchResponse {
+  int32 total = 1;
+  string relation = 2;
+  float max_score = 3;
+  repeated SearchHit hits = 4;
+  bytes aggregations = 5;  // raw JSON
+}
+
+message SearchHit {
+  string index = 1;
+  string id = 2;
+  float score = 3;
+  bytes source = 4;
+  int64 seq_no = 5;
+}
+
+message GetRequest {
+  string index = 1;
+  string id = 2;
+}
+
+message GetResponse {
+  bool found = 1;
+  bytes source = 2;
+  int64 seq_no = 3;
+}
+
+message WALCursor {
+  uint64 shard_id = 1;
+  uint64 from_seq = 2;
+}
+
+message LogChunk {
+  uint64 seq = 1;
+  bytes data = 2;
+}
+
+message SnapshotRequest {
+  uint64 shard_id = 1;
+}
+
+message SnapshotMeta {
+  uint64 shard_id = 1;
+  uint64 snapshot_index = 2;
+  repeated string segment_paths = 3;
+}

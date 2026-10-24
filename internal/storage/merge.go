@@ -117,6 +117,19 @@ func (s *Shard) MergeSegments(ctx context.Context, segIDs []types.SegmentID) (ty
 		return 0, err
 	}
 
+	// 7b. Build inverted indexes (text search) from surviving rows.
+	// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.2.2
+	if err := s.buildMergeInvertedIndexes(ctx, sources, bitmaps, segID, fields); err != nil {
+		builder.Abort()
+		return 0, err
+	}
+
+	// 7c. Build scalar indexes (BKD/Bitmap) from surviving rows.
+	if err := s.buildMergeScalarIndexes(ctx, sources, bitmaps, segID, fields); err != nil {
+		builder.Abort()
+		return 0, err
+	}
+
 	// 8. Atomic publish: rename tmp → seg_{segID} + fsync + footer.
 	segReader, err := builder.Finish()
 	if err != nil {
@@ -130,6 +143,19 @@ func (s *Shard) MergeSegments(ctx context.Context, segIDs []types.SegmentID) (ty
 		// queries on this segment will error; scalar queries work).
 		// Failing here would leak the segment on disk.
 		loaded = map[types.FieldID]index.LoadedIndex{}
+	}
+
+	// 9b. Load inverted and scalar indexes from the published segment.
+	// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.2.2
+	if invLoaded, err := s.flusher.loadInvertedIndexes(segID, fields); err == nil {
+		for fid, li := range invLoaded {
+			loaded[fid] = li
+		}
+	}
+	if scalarLoaded, err := s.flusher.loadScalarIndexes(segID, fields); err == nil {
+		for fid, li := range scalarLoaded {
+			loaded[fid] = li
+		}
 	}
 
 	// 10. Atomic SegmentSet swap: replace the source segments with

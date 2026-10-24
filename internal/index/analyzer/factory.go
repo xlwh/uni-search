@@ -15,6 +15,10 @@ const (
 	NameChinese    = "chinese"
 	NameNGram      = "ngram"
 	NameEdgeNGram  = "edge_ngram"
+	NameMinHash    = "minhash"
+	NameCollation  = "collation"
+	NamePipeline   = "pipeline"
+	NameFastText  = "fasttext"
 )
 
 // Default ngram/edge_ngram gram sizes.
@@ -62,6 +66,68 @@ func Get(name string, params map[string]any) (Analyzer, error) {
 			return nil, err
 		}
 		return NewChain(tok), nil
+	case NameMinHash:
+		numPerm, err := paramIntOpt(params, "num_perm", 128)
+		if err != nil {
+			return nil, err
+		}
+		seedVal, err := paramIntOpt(params, "seed", 42)
+		if err != nil {
+			return nil, err
+		}
+		mf, err := NewMinHashFilter(numPerm, int64(seedVal))
+		if err != nil {
+			return nil, newIllegalArgumentf("minhash: %v", err)
+		}
+		return NewChain(NewKeywordTokenizer(), mf), nil
+	case NameCollation:
+		locale := paramStrOpt(params, "locale", "en")
+		strength := paramStrOpt(params, "strength", "primary")
+		if err := validateStrength(strength); err != nil {
+			return nil, newIllegalArgumentf("%v", err)
+		}
+		cf, err := NewCollationFilter(locale, strength)
+		if err != nil {
+			return nil, newIllegalArgumentf("collation: %v", err)
+		}
+		return NewChain(NewKeywordTokenizer(), cf), nil
+	case NamePipeline:
+		analyzerNames, err := paramStrList(params, "analyzers")
+		if err != nil {
+			return nil, newIllegalArgumentf("pipeline: %v", err)
+		}
+		if len(analyzerNames) == 0 {
+			return nil, newIllegalArgumentf("pipeline: at least one analyzer required")
+		}
+		stages := make([]Analyzer, 0, len(analyzerNames))
+		for _, an := range analyzerNames {
+			if an == NamePipeline {
+				return nil, newIllegalArgumentf("pipeline: nested pipeline not supported")
+			}
+			sub, err := Get(an, nil)
+			if err != nil {
+				return nil, newIllegalArgumentf("pipeline: analyzer %q: %v", an, err)
+			}
+			stages = append(stages, sub)
+		}
+		pa, err := NewPipelineAnalyzer(stages...)
+		if err != nil {
+			return nil, newIllegalArgumentf("pipeline: %v", err)
+		}
+		return pa, nil
+	case NameFastText:
+		modelPath := paramStrOpt(params, "model_path", "")
+		modeStr := paramStrOpt(params, "mode", "classification")
+		dimVal, _ := paramIntOpt(params, "dim", 5)
+		var mode FastTextMode
+		switch modeStr {
+		case "nearest":
+			mode = FastTextNearest
+		default:
+			mode = FastTextClassification
+		}
+		fta, _ := NewFastTextAnalyzer(modelPath, mode, dimVal)
+		return fta, nil
 	default:
 		return nil, newIllegalArgumentf("unknown analyzer [%s]", name)
 	}
@@ -103,6 +169,62 @@ func paramInt(v any, name string) (int, error) {
 		return i, nil
 	default:
 		return 0, newIllegalArgumentf("analyzer param [%s] must be an integer, got %T", name, v)
+	}
+}
+
+// paramIntOpt reads an optional integer param with a default value.
+func paramIntOpt(params map[string]any, name string, def int) (int, error) {
+	if params == nil {
+		return def, nil
+	}
+	v, ok := params[name]
+	if !ok {
+		return def, nil
+	}
+	return paramInt(v, name)
+}
+
+// paramStrOpt reads an optional string param with a default value.
+func paramStrOpt(params map[string]any, name string, def string) string {
+	if params == nil {
+		return def
+	}
+	v, ok := params[name]
+	if !ok {
+		return def
+	}
+	switch s := v.(type) {
+	case string:
+		return s
+	default:
+		return def
+	}
+}
+
+// paramStrList reads a required string list param.
+func paramStrList(params map[string]any, name string) ([]string, error) {
+	if params == nil {
+		return nil, fmt.Errorf("missing param [%s]", name)
+	}
+	v, ok := params[name]
+	if !ok {
+		return nil, fmt.Errorf("missing param [%s]", name)
+	}
+	switch val := v.(type) {
+	case []any:
+		result := make([]string, 0, len(val))
+		for _, item := range val {
+			s, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("param [%s] must be a string list, got %T", name, item)
+			}
+			result = append(result, s)
+		}
+		return result, nil
+	case []string:
+		return val, nil
+	default:
+		return nil, fmt.Errorf("param [%s] must be a string list, got %T", name, v)
 	}
 }
 

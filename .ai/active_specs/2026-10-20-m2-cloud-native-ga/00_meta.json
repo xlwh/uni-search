@@ -1,0 +1,29 @@
+{
+  "name": "2026-10-20-m2-cloud-native-ga",
+  "status": "planned",
+  "created_at": "2026-10-20T08:13:22.438438+00:00",
+  "updated_at": "2026-10-20T08:28:59.678142+00:00",
+  "description": "M2 云原生 GA 全量 W6.1-W6.10",
+  "tags": [
+    "feature",
+    "cloud-native",
+    "m2"
+  ],
+  "blocked": false,
+  "blocked_reason": "",
+  "blocked_at": "",
+  "state_history": [
+    {
+      "from": "drafting",
+      "to": "proposed",
+      "timestamp": "2026-10-20T16:18:25.601269",
+      "forced": true
+    },
+    {
+      "from": "proposed",
+      "to": "planned",
+      "timestamp": "2026-10-20T16:28:59.678131",
+      "forced": true
+    }
+  ]
+}

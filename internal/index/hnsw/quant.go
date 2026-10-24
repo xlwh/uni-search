@@ -13,6 +13,35 @@ import (
 // current one safely. The zero value (no quantization) is valid.
 type sqState = atomic.Pointer[SQ8]
 
+// rbState is the RaBitQ quantization-tier holder (§2.5 warm+ tier):
+// 1-bit quantization via random projection + binary sign, achieving
+// ~32× memory reduction with ≥95% recall + float32 rerank.
+// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.3.4
+type rbState = atomic.Pointer[RaBitQState]
+
+// pqState is the PQ quantization-tier holder (§Phase 3):
+// Product Quantization with K-means++ training, achieving ~4× memory
+// reduction with LUT-based coarse ranking + float32 rerank.
+// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.3
+type pqState = atomic.Pointer[PQState]
+
+// RaBitQState holds the RaBitQ quantized representation of all graph
+// vectors: contiguous binary bitmaps, plus the quantizer (projection
+// matrix). Search uses Hamming distance for coarse ranking and float32
+// original vectors for rerank (same pattern as SQ8).
+//
+// Phase 2 optimization: codes flattened from [][]byte to []byte +
+// codeOffsets to reduce GC overhead and enable batch Hamming distance.
+//
+// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.2.3
+type RaBitQState struct {
+	quantizer   *RaBitQuantizer
+	codesFlat   []byte  // contiguous n*nBytes binary bitmaps
+	codeOffsets []int32 // per-node offset; codeOffsets[i] = i*nBytes
+	nBits       int
+	nBytes      int
+}
+
 // SQ8 is per-dimension int8 scalar quantization state (§2.5): the
 // per-dim min/max of the column plus one int8 code per vector
 // component. Codes are unsigned levels in [0, 255] stored in the int8
@@ -121,6 +150,95 @@ func (g *Graph) DisableSQ8() {
 	g.sq.Store(nil)
 }
 
+// EnableRaBitQ trains RaBitQ 1-bit quantization over the stored vectors
+// and installs it as the active tier (§2.5: warm+ tier, ~32× memory
+// reduction, ≥95% recall with rerank). Only dot-based metrics support
+// RaBitQ in M0.
+// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.3.4
+func (g *Graph) EnableRaBitQ() error {
+	if g.cfg.Metric == MetricL2 {
+		return fmt.Errorf("hnsw: RaBitQ quantization requires a dot-based metric, got l2")
+	}
+	rq := NewRaBitQuantizer(g.dims)
+	nBytes := (g.dims + 7) / 8
+	rb := &RaBitQState{
+		quantizer:   rq,
+		nBits:       g.dims,
+		nBytes:      nBytes,
+		codesFlat:   make([]byte, int(g.n)*nBytes),
+		codeOffsets: make([]int32, int(g.n)),
+	}
+	for i := 0; i < int(g.n); i++ {
+		rb.codeOffsets[i] = int32(i * nBytes)
+		copy(rb.codesFlat[i*nBytes:(i+1)*nBytes], rq.Quantize(g.Vector(int32(i))))
+	}
+	g.rb.Store(rb)
+	return nil
+}
+
+// DisableRaBitQ drops back to the float32 or SQ8 tier.
+func (g *Graph) DisableRaBitQ() {
+	g.rb.Store(nil)
+}
+
+// RaBitQActive reports whether RaBitQ quantization is active.
+func (g *Graph) RaBitQActive() bool { return g.rb.Load() != nil }
+
+// searchRaBitQ runs the RaBitQ search path (§2.5): quantize the query
+// to a binary bitmap, use Hamming distance for coarse ranking, widen
+// the beam by 1.5× to compensate quantization recall loss, and rerank
+// every candidate against its float32 original. Same pattern as SQ8.
+//
+// Phase 2 optimization: uses HammingDistanceBatch for batch distance
+// computation against flat contiguous codes.
+//
+// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.2.3
+func (g *Graph) searchRaBitQ(rb *RaBitQState, st *searchState, q []float32, k, ef int, filter func(int32) bool, budget searchBudget) ([]Hit, error) {
+	efQ := int(math.Ceil(float64(ef) * 1.5))
+	if efQ < ef {
+		efQ = ef
+	}
+	// Quantize query to binary bitmap.
+	qBits := rb.quantizer.Quantize(q)
+	nBits := rb.nBits
+	dists := func(ids []int32, out []float32) {
+		hamOut := make([]int, len(ids))
+		simd.HammingDistanceBatch(qBits, rb.codesFlat, rb.codeOffsets, ids, hamOut)
+		for i := range ids {
+			if hamOut[i] < 0 {
+				out[i] = math.MaxFloat32
+				continue
+			}
+			out[i] = float32(hamOut[i])
+		}
+	}
+	dists = countDists(dists, budget)
+	// Rerank against float32 originals (same as SQ8).
+	rerank := func(id int32, coarseD float32) float32 {
+		return -simd.DotF32(q, g.Vector(id))
+	}
+	entryD := make([]float32, 1)
+	dists([]int32{g.entry}, entryD)
+	ep, epD := g.entry, entryD[0]
+	for l := int(g.maxLevel); l >= 1; l-- {
+		w := st.s.search(g, ep, epD, 1, l, dists, filter, budget.MaxVisited, rerank)
+		if len(w) == 0 {
+			break
+		}
+		ep, epD = w[0].id, w[0].d
+	}
+	w := st.s.search(g, ep, epD, efQ, 0, dists, filter, budget.MaxVisited, rerank)
+	if len(w) > k {
+		w = w[:k]
+	}
+	hits := make([]Hit, 0, len(w))
+	for _, c := range w {
+		hits = append(hits, Hit{RowID: c.id, Score: -c.d})
+	}
+	_ = nBits
+	return hits, nil
+}
+
 // searchQuantized runs the SQ8 search path (§2.5): quantize the query
 // per dim (pre-multiplying the per-dim scales into it), widen the beam
 // by 1.5x to compensate quantization recall loss, and run the graph
@@ -145,6 +263,75 @@ func (g *Graph) searchQuantized(sq *SQ8, st *searchState, q []float32, k, ef int
 		for i, id := range ids {
 			c := int(id) * dims
 			out[i] = -(off + DotI8F32(qs, sq.codes[c:c+dims]))
+		}
+	}
+	dists = countDists(dists, budget)
+	rerank := func(id int32, coarseD float32) float32 {
+		return -simd.DotF32(q, g.Vector(id))
+	}
+	entryD := make([]float32, 1)
+	dists([]int32{g.entry}, entryD)
+	ep, epD := g.entry, entryD[0]
+	for l := int(g.maxLevel); l >= 1; l-- {
+		w := st.s.search(g, ep, epD, 1, l, dists, filter, budget.MaxVisited, rerank)
+		if len(w) == 0 {
+			break
+		}
+		ep, epD = w[0].id, w[0].d
+	}
+	w := st.s.search(g, ep, epD, efQ, 0, dists, filter, budget.MaxVisited, rerank)
+	if len(w) > k {
+		w = w[:k]
+	}
+	hits := make([]Hit, 0, len(w))
+	for _, c := range w {
+		hits = append(hits, Hit{RowID: c.id, Score: -c.d})
+	}
+	return hits, nil
+}
+
+// EnablePQ trains PQ quantization over the stored vectors and installs
+// it as the active tier. m = subspace count; 0 = auto-select.
+// Only dot-based metrics support PQ in the current implementation.
+//
+// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.3.4
+func (g *Graph) EnablePQ(m int) error {
+	if g.cfg.Metric == MetricL2 {
+		return fmt.Errorf("hnsw: PQ quantization requires a dot-based metric, got l2")
+	}
+	pq, err := trainPQ(g, m)
+	if err != nil {
+		return err
+	}
+	g.pq.Store(pq)
+	return nil
+}
+
+// DisablePQ drops back to the float32 or other tier.
+func (g *Graph) DisablePQ() { g.pq.Store(nil) }
+
+// PQActive reports whether PQ quantization is active.
+func (g *Graph) PQActive() bool { return g.pq.Load() != nil }
+
+// searchPQ runs the PQ search path: build LUT from query, use LUT
+// lookup for coarse ranking, widen beam 1.5×, rerank with float32.
+//
+// @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.3.4
+func (g *Graph) searchPQ(pq *PQState, st *searchState, q []float32, k, ef int, filter func(int32) bool, budget searchBudget) ([]Hit, error) {
+	efQ := int(math.Ceil(float64(ef) * 1.5))
+	if efQ < ef {
+		efQ = ef
+	}
+	lut := pq.buildLUT(q)
+	m := pq.m
+	dists := func(ids []int32, out []float32) {
+		for i, id := range ids {
+			if id < 0 || int(id) >= pq.n {
+				out[i] = math.MaxFloat32
+				continue
+			}
+			code := pq.codes[int(id)*m : int(id+1)*m]
+			out[i] = -pqDistance(lut, code, m) // negate for ascending sort
 		}
 	}
 	dists = countDists(dists, budget)

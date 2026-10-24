@@ -14,12 +14,13 @@ import (
 // rule inputs: delete rate (DeletedRows/NumRows), segment count and
 // tier (Bytes), and seq range for order-preserving merge.
 type SegmentStats struct {
-	ID          types.SegmentID
-	NumRows     int
-	DeletedRows int
-	Bytes       int64
-	MinSeq      types.SeqNo
-	MaxSeq      types.SeqNo
+	ID           types.SegmentID
+	NumRows      int
+	DeletedRows  int
+	Bytes        int64
+	MinSeq       types.SeqNo
+	MaxSeq       types.SeqNo
+	MaxTimestamp int64 // F4: max value of the TTL timestamp column. @spec: 02_spec.md#5.3
 }
 
 // ListMergeCandidates returns stats for every published segment the

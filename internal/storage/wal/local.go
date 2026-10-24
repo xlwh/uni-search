@@ -376,6 +376,45 @@ func (w *LocalWAL) Append(ctx context.Context, entries ...Entry) (types.SeqNo, e
 	}
 }
 
+// AppendAsync appends entries without waiting for fsync (design 01 §3.2:
+// refresh=false). The commit loop will fsync in the background (within
+// the commit window). Returns the assigned SeqNo immediately.
+// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.2.8
+func (w *LocalWAL) AppendAsync(ctx context.Context, entries ...Entry) (types.SeqNo, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	w.mu.Lock()
+	if w.closed {
+		w.mu.Unlock()
+		return 0, ErrClosed
+	}
+	if len(entries) == 0 {
+		cur := w.commitSeq
+		w.mu.Unlock()
+		return cur, nil
+	}
+	seq := w.nextSeq
+	for i := range entries {
+		entries[i].SeqNo = seq
+		w.pendBytes += len(entries[i].Payload) + 4 + recordOverhead
+		seq++
+	}
+	w.pending = append(w.pending, entries...)
+	w.nextSeq = seq
+	mySeq := seq - 1
+	w.mu.Unlock()
+
+	select {
+	case w.notify <- struct{}{}:
+	default:
+	}
+
+	// Return immediately without waiting for fsync.
+	_ = mySeq
+	return mySeq, nil
+}
+
 // commitLoop is the commit leader (§3.2): it waits for queued entries,
 // gathers the batch until the time window or byte threshold fires
 // (whichever first), then flushes once and broadcasts completion.

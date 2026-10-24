@@ -1,0 +1,35 @@
+{
+  "name": "2026-10-22-es-feature-gap-fill",
+  "status": "implemented",
+  "created_at": "2026-10-22T11:27:27.282262+00:00",
+  "updated_at": "2026-10-22T11:47:55.102976+00:00",
+  "description": "对比 Elasticsearch 核心功能，为 uni-search 补齐 9 个功能域、50+ 个功能点",
+  "tags": [
+    "feature",
+    "es-compat",
+    "gap-fill"
+  ],
+  "blocked": false,
+  "blocked_reason": "",
+  "blocked_at": "",
+  "state_history": [
+    {
+      "from": "drafting",
+      "to": "proposed",
+      "timestamp": "2026-10-22T19:31:30.989781",
+      "forced": true
+    },
+    {
+      "from": "proposed",
+      "to": "planned",
+      "timestamp": "2026-10-22T19:38:27.761558",
+      "forced": true
+    },
+    {
+      "from": "planned",
+      "to": "implemented",
+      "timestamp": "2026-10-22T19:47:55.102967",
+      "forced": true
+    }
+  ]
+}

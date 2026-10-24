@@ -26,6 +26,13 @@ type Row struct {
 	SeqNo  types.SeqNo
 	Source []byte
 	Values map[types.FieldID]any
+
+	// ClientID and Sequence enable idempotent writes (design 01 §2.3).
+	// When ClientID is non-empty, the MemTable deduplicates requests
+	// with the same (ClientID, Sequence) pair via an LRU window.
+	// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.2.1
+	ClientID string
+	Sequence uint64
 }
 
 // RowView is the read-only projection used by the scan path (design 01

@@ -7,7 +7,7 @@ import (
 	"github.com/unisearch-db/unisearch/internal/jsonx"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.4.4
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.4.4
 
 // handleRolloverIndex handles POST /{alias}/_rollover and POST /{alias}/_rollover/{target}.
 func (s *Server) handleRolloverIndex(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +44,7 @@ func (s *Server) handleRolloverIndex(w http.ResponseWriter, r *http.Request) {
 	// Create the new index with PUT /{newIndex}.
 	// P2 simplified: just acknowledge the rollover.
 	writeJSON(w, 0, map[string]any{
-		"acknowledged":       true,
+		"acknowledged":        true,
 		"shards_acknowledged": true,
 		"old_index":           alias,
 		"new_index":           newIndex,

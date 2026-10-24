@@ -5,12 +5,12 @@ UniSearch 是一个融合全文检索与向量搜索的数据库，提供 Elasti
 ## 核心特性
 
 - **融合检索**：全文 BM25 + KNN 向量搜索 + 混合融合（RRF / Weighted / RelativeScore）
-- **ES 兼容**：REST API 100% 兼容 ES 8.x，现有 ES 客户端可直接连接
+- **ES 兼容**：REST API 高度兼容 ES 8.x（主流查询/聚合/管理 API），未覆盖能力返回明确的 `unsupported_capability` 错误（详见 [兼容性文档](docs/user-guide/es-compatibility.md)）
 - **自研列存**：列式存储引擎，支持 DICT / DELTA_BITPACK / GORILLA / ZSTD 编码，zstd 压缩
-- **HNSW 索引**：CSR 邻接布局 + SQ8 量化 + SIMD 加速（AVX2+FMA / NEON）+ Cross-Link Merge
+- **HNSW 索引**：CSR 邻接布局 + SQ8 量化 + SIMD 距离框架（运行时 CPU 特性探测；汇编内核规划中，当前为纯 Go 标量路径）+ Cross-Link Merge
 - **多租户**：四维配额（存储/向量数/QPS/TPS）+ 准入控制 + 背压
 - **两种部署模式**：embedded 单节点（开发/测试）和 cloud 分布式集群（生产）
-- **零外部依赖**：不依赖 etcd / Kafka / 外部数据库，Raft 内置，WAL 即 Raft log
+- **零外部依赖**：不依赖 etcd / Kafka / 外部数据库，元数据层 Raft 内置（hashicorp/raft），分片层 Raft 组已实现待接线
 - **可观测性**：Prometheus 指标 + OpenTelemetry 分布式追踪 + slog 结构化日志
 
 ## 快速开始

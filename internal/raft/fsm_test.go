@@ -74,9 +74,9 @@ func TestMetaFSM_SplitShard(t *testing.T) {
 	// Split
 	cmd, _ = EncodeCommand(CmdSplitShard, map[string]any{
 		"ParentShardID": uint64(1),
-		"ChildShardIDs":  []uint64{2, 3},
-		"NewGeneration":  uint64(2),
-		"RaftGroups":     [][]string{{"node1", "node3"}, {"node2", "node4"}},
+		"ChildShardIDs": []uint64{2, 3},
+		"NewGeneration": uint64(2),
+		"RaftGroups":    [][]string{{"node1", "node3"}, {"node2", "node4"}},
 	})
 	require.NoError(t, fsm.Apply(cmd))
 

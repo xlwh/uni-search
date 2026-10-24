@@ -10,7 +10,7 @@ import (
 
 // ---------------------------------------------------------------------------
 // MMR (Maximal Marginal Relevance) tests.
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.3
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.3
 // ---------------------------------------------------------------------------
 
 func TestMMR_BasicDiversity(t *testing.T) {

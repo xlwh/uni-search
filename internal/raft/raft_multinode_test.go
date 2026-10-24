@@ -1,18 +1,18 @@
 package raft
 
 import (
-"context"
-"fmt"
-"net"
-"os"
-"path/filepath"
-"testing"
-"time"
+	"context"
+	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
 
-"github.com/stretchr/testify/assert"
-"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-"github.com/unisearch-db/unisearch/internal/meta"
+	"github.com/unisearch-db/unisearch/internal/meta"
 )
 
 // makePeerList builds the peers string list for a 3-node cluster.

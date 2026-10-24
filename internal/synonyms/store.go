@@ -3,7 +3,7 @@ package synonyms
 import "sync"
 
 // SynonymStore manages synonym sets in memory using sync.Map.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.9
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.9
 type SynonymStore struct {
 	m sync.Map // id → *SynonymSet
 }

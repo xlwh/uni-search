@@ -587,6 +587,7 @@ func (f *FlushWorker) loadScalarIndexes(
 	}
 	return loaded, nil
 }
+
 // ColumnWriter, dispatching by FieldType and padding rows that have no
 // entry (sparse column) with AppendNull. GeoPoint is not a storable
 // block column in M0 (column_writer.go) — it lives in the BKD index

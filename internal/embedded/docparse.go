@@ -1,8 +1,8 @@
 package embedded
 
 import (
-	"github.com/unisearch-db/unisearch/internal/jsonx"
 	"fmt"
+	"github.com/unisearch-db/unisearch/internal/jsonx"
 
 	"github.com/unisearch-db/unisearch/internal/meta"
 	"github.com/unisearch-db/unisearch/internal/storage/memtable"

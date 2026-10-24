@@ -48,7 +48,7 @@ func TestScriptQuery_FiltersByScript(t *testing.T) {
 
 // TestScriptScore_ReScoresWithScript verifies script_score replaces the
 // inner score with the script result (former stub assigned uniform 1.0).
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
 func TestScriptScore_ReScoresWithScript(t *testing.T) {
 	dir := t.TempDir()
 	eng, err := New(dir)

@@ -17,8 +17,8 @@ import (
 // QueryCoordinator routes search queries to shard nodes and merges
 // results (D3: direct connection, no intermediate layer).
 type QueryCoordinator struct {
-	mu        sync.RWMutex
-	routes    map[string][]ShardRoute  // index name → shard routes
+	mu           sync.RWMutex
+	routes       map[string][]ShardRoute // index name → shard routes
 	shardClients map[string]ShardClient  // node addr → client
 }
 
@@ -39,8 +39,8 @@ type ShardClient interface {
 
 // ShardSearchResult is the result from one shard.
 type ShardSearchResult struct {
-	Total  int
-	Hits   []ShardHit
+	Total int
+	Hits  []ShardHit
 }
 
 // ShardHit is one hit from a shard.
@@ -130,7 +130,7 @@ func (c *QueryCoordinator) Search(ctx context.Context, indices []string, body []
 // MergedSearchResult is the coordinator's merged result.
 type MergedSearchResult struct {
 	Total int
-	Hits   []MergedHit
+	Hits  []MergedHit
 }
 
 // MergedHit is a hit with index attribution.
@@ -144,16 +144,16 @@ type MergedHit struct {
 // IngestCoordinator manages batch ingestion with per-shard攒批 and
 // backpressure (design 05 §6.1).
 type IngestCoordinator struct {
-	mu        sync.Mutex
-	queues    map[uint64]*shardQueue  // shard ID → batch queue
-	maxBytes  int64                    // max queue size per shard (64MB)
-	maxWait   time.Duration           // max batch wait (2ms)
+	mu       sync.Mutex
+	queues   map[uint64]*shardQueue // shard ID → batch queue
+	maxBytes int64                  // max queue size per shard (64MB)
+	maxWait  time.Duration          // max batch wait (2ms)
 }
 
 type shardQueue struct {
-	mu     sync.Mutex
-	buf    []byte
-	count  int
+	mu      sync.Mutex
+	buf     []byte
+	count   int
 	flushAt time.Time
 }
 

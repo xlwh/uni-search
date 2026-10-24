@@ -38,8 +38,8 @@ type Bloom struct {
 // for the query value is skipped entirely, avoiding block decode.
 // @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.3.7
 type BlockBloom struct {
-	blooms []*Bloom  // one per block
-	blockN int       // entries per block (default 1024)
+	blooms []*Bloom // one per block
+	blockN int      // entries per block (default 1024)
 }
 
 // NewBlockBloom creates a block-level bloom filter with the given number

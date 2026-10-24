@@ -27,14 +27,14 @@ func TestAdaptiveHeuristic_AlphaEqualsOne(t *testing.T) {
 	cfg := Config{M: 8, EFConstruction: 50, Metric: MetricDot}
 	cfg = cfg.resolve()
 	b := &builder{
-		cfg:    cfg,
-		n:      n,
-		dims:   dims,
-		vecs:   vecs,
+		cfg:      cfg,
+		n:        n,
+		dims:     dims,
+		vecs:     vecs,
 		searcher: newLayerSearcher(n, 2*cfg.M+1),
-		batch:  make([]float32, 16*dims),
-		rng:    rng,
-		mult:   2.0,
+		batch:    make([]float32, 16*dims),
+		rng:      rng,
+		mult:     2.0,
 	}
 	// Build candidates.
 	cands := make([]cand, 20)

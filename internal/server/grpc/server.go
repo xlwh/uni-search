@@ -95,7 +95,9 @@ func NewMetaServer() *MetaServer {
 }
 
 // NewMetaServerWithCluster creates a MetaService server bound to a Raft cluster.
-func NewMetaServerWithCluster(cluster interface{ Apply(context.Context, []byte) error }, leaderAddr string) *MetaServer {
+func NewMetaServerWithCluster(cluster interface {
+	Apply(context.Context, []byte) error
+}, leaderAddr string) *MetaServer {
 	return &MetaServer{cluster: cluster, leaderAddr: leaderAddr}
 }
 

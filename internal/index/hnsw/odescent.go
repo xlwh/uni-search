@@ -7,8 +7,9 @@
 // imports and enables parallelizable construction.
 //
 // Hybrid initial kNN strategy:
-//   n <  100k → chunked brute force (O(n²/blockSize))
-//   n ≥ 100k → random projection LSH (O(n*log(n)))
+//
+//	n <  100k → chunked brute force (O(n²/blockSize))
+//	n ≥ 100k → random projection LSH (O(n*log(n)))
 //
 // @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.4.4
 package hnsw

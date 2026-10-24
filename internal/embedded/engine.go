@@ -470,7 +470,7 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 	// the script as _score), then apply min_score filtering. Doing this
 	// once on the merged hits keeps the memtable and segment paths on a
 	// single scoring implementation.
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
 	if ss, ok := q.(*dsl.ScriptScoreQuery); ok && ss != nil && len(allHits) > 0 {
 		allHits = applyScriptScore(ss, allHits)
 		total = len(allHits)
@@ -507,7 +507,7 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 	// P0: post_filter — filter hits after aggregations (ES semantics:
 	// aggs run on all matching docs; post_filter reduces hits but
 	// does not affect aggs or total count).
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.3
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.3
 	if len(extras.PostFilter) > 0 && len(allHits) > 0 {
 		pfQuery, pfErr := dsl.ParseQuery(extras.PostFilter)
 		if pfErr == nil && pfQuery != nil {
@@ -517,7 +517,7 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 
 	// P0: rescore — re-score top-N hits within the window using a
 	// secondary query, blending primary and rescore scores.
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.1
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.1
 	if len(extras.Rescore) > 0 && len(allHits) > 0 {
 		allHits = applyRescore(allHits, extras.Rescore)
 	}
@@ -525,7 +525,7 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 	// P0: collapse — group hits by a field value, keeping only the
 	// top hit per group (ES semantics: collapse is applied before
 	// from/size pagination).
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.2
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.2
 	if len(extras.Collapse) > 0 && len(allHits) > 0 {
 		allHits = applyCollapse(allHits, extras.Collapse)
 		total = len(allHits) // collapse reduces total
@@ -592,7 +592,7 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 	}
 
 	// P2: Evaluate script_fields and runtime_mappings for each hit.
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.6
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.6
 	if len(extras.ScriptFields) > 0 || len(extras.RuntimeMappings) > 0 {
 		for i := range pagedHits {
 			src := decodeSource(pagedHits[i].Source)
@@ -646,7 +646,7 @@ func (e *Engine) Search(ctx context.Context, indices []string, body []byte) (*es
 // params, Math.*, arithmetic/logic/ternary, vector functions), with the
 // ES-aligned 100k step budget. Returns nil when the script cannot be
 // parsed or evaluated.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.6
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.6
 func evalScriptField(source string, doc map[string]any, params map[string]any, score float64) any {
 	scr, err := script.Parse(source)
 	if err != nil {
@@ -662,7 +662,7 @@ func evalScriptField(source string, doc map[string]any, params map[string]any, s
 // applyScriptScore re-scores each hit by evaluating the script_score
 // script against the hit's _source (the inner query score is passed to
 // the script as _score) and drops hits below min_score.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
 func applyScriptScore(q *dsl.ScriptScoreQuery, hits []esapi.SearchHit) []esapi.SearchHit {
 	scr, err := script.Parse(q.Script)
 	if err != nil {
@@ -1738,7 +1738,7 @@ var _ esapi.Engine = (*Engine)(nil)
 
 // ---------------------------------------------------------------------------
 // P0 search enhancement helpers (es-feature-gap-fill)
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3
 // ---------------------------------------------------------------------------
 
 // filterByPostFilter filters hits by checking each hit's _source against

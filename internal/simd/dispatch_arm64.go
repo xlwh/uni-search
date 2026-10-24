@@ -2,8 +2,8 @@
 
 // Package simd dispatch_arm64.go selects the best available kernel set
 // on ARM64 at init time. Two-level fallback:
-//   1. NEON  → assembly kernels (when available)
-//   2. pure Go → kernel_purego.go functions (always available)
+//  1. NEON  → assembly kernels (when available)
+//  2. pure Go → kernel_purego.go functions (always available)
 //
 // @spec: ./active_specs/2026-10-22-vsag-algo-integration/02_spec.md#2.1.5
 package simd

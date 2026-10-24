@@ -51,7 +51,7 @@ func (s *TFIDFScorer) IDF(df, N uint64) float64 {
 	if df == 0 || N == 0 || df >= N {
 		return 0
 	}
-	return math.Log(float64(N) / float64(df)) * s.params.Boost
+	return math.Log(float64(N)/float64(df)) * s.params.Boost
 }
 
 // UpperBound computes the maximum possible score for a block with

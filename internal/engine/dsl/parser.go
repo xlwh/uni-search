@@ -118,7 +118,7 @@ func ParseSearchBody(body []byte) (Query, int, int, error) {
 // consumes beyond the M0 query/from/size triple. Each field is the raw
 // JSON (nil when absent in the request).
 // @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.8
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3
 type SearchExtras struct {
 	Aggs            jsonx.RawMessage
 	Highlight       jsonx.RawMessage
@@ -1627,7 +1627,7 @@ func jsonKindName(raw jsonx.RawMessage) string {
 
 // ---------------------------------------------------------------------------
 // P0 DSL query parsers (es-feature-gap-fill)
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2
 // ---------------------------------------------------------------------------
 
 // parsePrefixQuery parses {"prefix": {"field": "pre"}} or
@@ -1851,7 +1851,7 @@ func parseDisMaxQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {
 
 // ---------------------------------------------------------------------------
 // P1 DSL query parsers (es-feature-gap-fill)
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.6-2.9
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.6-2.9
 // ---------------------------------------------------------------------------
 
 // parseFunctionScoreQuery parses {"function_score": {"query": {...}, "functions": [...]}}.
@@ -2151,7 +2151,7 @@ func parseDistanceToMeters(s string) float64 {
 
 // ---------------------------------------------------------------------------
 // P2 DSL query parsers (es-feature-gap-fill)
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.10-2.13
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.10-2.13
 // ---------------------------------------------------------------------------
 
 func parseMoreLikeThisQuery(c *parseCtx, raw jsonx.RawMessage) (Query, error) {

@@ -17,7 +17,7 @@ import (
 type MetaCluster struct {
 	mu      sync.RWMutex
 	fsm     *MetaFSM
-	members map[NodeID]string  // node ID → address
+	members map[NodeID]string // node ID → address
 	leader  NodeID
 	ready   bool
 }
@@ -123,7 +123,7 @@ func (c *MetaCluster) Watch() <-chan MetaEvent {
 
 // MetaEvent is a state change notification.
 type MetaEvent struct {
-	Type    string  // "route_change" | "watermark" | "member_change"
+	Type    string // "route_change" | "watermark" | "member_change"
 	Payload any
 }
 

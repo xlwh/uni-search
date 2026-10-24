@@ -47,7 +47,7 @@ type asyncInsertBatch struct {
 	size      int
 	createdAt time.Time
 	done      chan struct{} // closed when flush completes
-	err       error        // flush error (read after done is closed)
+	err       error         // flush error (read after done is closed)
 }
 
 // asyncInsertMetrics tracks queue statistics.
@@ -60,15 +60,15 @@ type asyncInsertMetrics struct {
 
 // AsyncInsertError records a recent flush failure.
 type AsyncInsertError struct {
-	Index    string
-	Error    string
-	Time     time.Time
+	Index string
+	Error string
+	Time  time.Time
 }
 
 var (
-	asyncErrorsMu   sync.Mutex
-	asyncErrorsLog   []AsyncInsertError
-	asyncErrorsMax   = 100
+	asyncErrorsMu  sync.Mutex
+	asyncErrorsLog []AsyncInsertError
+	asyncErrorsMax = 100
 )
 
 // NewAsyncInsertQueue creates a new async insert queue.
@@ -84,7 +84,7 @@ func NewAsyncInsertQueue(config AsyncInsertConfig, flusher FlushFunc) *AsyncInse
 	}
 	q := &AsyncInsertQueue{
 		groups:  make(map[uint64]*asyncInsertBatch),
-		config: config,
+		config:  config,
 		stopCh:  make(chan struct{}),
 		flusher: flusher,
 	}

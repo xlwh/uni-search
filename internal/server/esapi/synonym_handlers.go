@@ -10,7 +10,7 @@ import (
 	"github.com/unisearch-db/unisearch/internal/synonyms"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.9
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.9
 
 func (s *Server) handlePutSynonyms(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("rest")
@@ -142,7 +142,7 @@ func (s *Server) serveSynonymDelete(w http.ResponseWriter, r *http.Request, id s
 
 // ---------------------------------------------------------------------------
 // P1: Single synonym rule management (es-feature-gap-fill)
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.9.1
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.9.1
 // ---------------------------------------------------------------------------
 
 func (s *Server) makePutSynonymRuleHandler(setID, ruleID string) http.HandlerFunc {

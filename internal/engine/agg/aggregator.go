@@ -175,7 +175,7 @@ func (a *AvgAgg) Name() string { return "avg" }
 
 // CardinalityAgg uses HLL++ for approximate distinct count.
 type CardinalityAgg struct {
-	hll        *HLL
+	hll       *HLL
 	precision int
 }
 
@@ -366,7 +366,7 @@ func (g *GroupAggregator) Reset() {
 
 // BucketResult is one group's result.
 type BucketResult struct {
-	Key     string
+	Key      string
 	DocCount float64
 	SubAggs  map[string]any
 }
@@ -374,8 +374,8 @@ type BucketResult struct {
 // MarshalJSON renders a bucket as ES-style JSON.
 func (b BucketResult) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any{
-		"key":       b.Key,
-		"doc_count": b.DocCount,
+		"key":          b.Key,
+		"doc_count":    b.DocCount,
 		"aggregations": b.SubAggs,
 	})
 }

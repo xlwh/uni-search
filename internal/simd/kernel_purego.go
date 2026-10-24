@@ -157,7 +157,7 @@ func hammingDistanceBatchPureGo(qBits []byte, codesFlat []byte, codeOffsets []in
 // a float16 vector stored as uint16 values. Each uint16 is converted
 // to float32 via IEEE 754 half-precision decoding before multiplication.
 //
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.4
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.4
 func dotF16F32PureGo(q []float32, docF16 []uint16) float32 {
 	if len(q) != len(docF16) {
 		panic(fmt.Sprintf("simd: DotF16F32: length mismatch: len(q)=%d, len(docF16)=%d", len(q), len(docF16)))

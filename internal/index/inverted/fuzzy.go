@@ -35,9 +35,9 @@ func FuzzySearch(fst *FST, query []byte, maxDist int) []FuzzyMatch {
 	}
 
 	type fuzzyState struct {
-		node    *fstNode
-		row     []int
-		term    []byte
+		node *fstNode
+		row  []int
+		term []byte
 	}
 	stack := []fuzzyState{{node: fst.Root(), row: initialRow, term: nil}}
 
@@ -95,8 +95,8 @@ func computeRow(query []byte, ch byte, prevRow []int) []int {
 			cost = 0
 		}
 		row[i+1] = min3(
-			row[i]+1,       // insertion
-			prevRow[i+1]+1, // deletion
+			row[i]+1,        // insertion
+			prevRow[i+1]+1,  // deletion
 			prevRow[i]+cost, // substitution
 		)
 	}

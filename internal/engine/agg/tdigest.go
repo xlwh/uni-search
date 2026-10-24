@@ -11,9 +11,9 @@ import (
 // @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.3
 type TDigest struct {
 	compression float64
-	centroids    []centroid
-	count        uint64
-	totalWeight  float64
+	centroids   []centroid
+	count       uint64
+	totalWeight float64
 }
 
 type centroid struct {

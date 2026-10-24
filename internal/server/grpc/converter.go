@@ -30,7 +30,7 @@ func ConvertWriteAck(results []esapi.WriteResult) *gen.WriteAck {
 		ack.Results[i] = &gen.WriteResult{
 			Id:     r.ID,
 			Result: r.Result,
-			SeqNo:   r.SeqNo,
+			SeqNo:  r.SeqNo,
 		}
 		if r.Err != nil {
 			ack.Results[i].Result = "error"

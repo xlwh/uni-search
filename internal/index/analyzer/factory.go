@@ -18,7 +18,7 @@ const (
 	NameMinHash    = "minhash"
 	NameCollation  = "collation"
 	NamePipeline   = "pipeline"
-	NameFastText  = "fasttext"
+	NameFastText   = "fasttext"
 )
 
 // Default ngram/edge_ngram gram sizes.

@@ -6,7 +6,7 @@ import (
 	"github.com/unisearch-db/unisearch/internal/engine/dsl"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.4
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.4
 
 // handleValidateQuery handles GET/POST /{index}/_validate/query.
 func (s *Server) handleValidateQuery(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +24,7 @@ func (s *Server) handleValidateQuery(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleSearchShards handles GET/POST /_search_shards and /{index}/_search_shards.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.7
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.7
 func (s *Server) handleSearchShards(w http.ResponseWriter, r *http.Request) {
 	pattern := r.PathValue("index")
 	if pattern == "" {
@@ -38,11 +38,11 @@ func (s *Server) handleSearchShards(w http.ResponseWriter, r *http.Request) {
 	var shards []any
 	for _, ii := range indices {
 		shards = append(shards, map[string]any{
-			"index":     ii.Index,
-			"shard":     0,
-			"primary":   true,
-			"node":      "node-1",
-			"state":     "STARTED",
+			"index":           ii.Index,
+			"shard":           0,
+			"primary":         true,
+			"node":            "node-1",
+			"state":           "STARTED",
 			"relocating_node": nil,
 		})
 	}

@@ -14,8 +14,8 @@ import (
 // MinioS3Client implements S3Client using the minio-go SDK.
 // @spec: ./archive/2026-10-20-m2-cloud-native-ga/02_spec.md#2.2
 type MinioS3Client struct {
-	client   *minio.Client
-	bucket   string
+	client *minio.Client
+	bucket string
 }
 
 // NewMinioS3Client creates a real S3-compatible client using minio-go.

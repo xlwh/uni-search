@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7.3
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.7.3
 
 // GrokProcessor parses unstructured text using grok patterns.
 type GrokProcessor struct {
-	Field    string
-	Patterns []string
+	Field       string
+	Patterns    []string
 	TargetField string
 }
 
@@ -194,7 +194,7 @@ func parseLiteral(s string) any {
 
 // ForEachProcessor applies a sub-processor to each element of an array field.
 type ForEachProcessor struct {
-	Field     string
+	Field        string
 	SubProcessor Processor
 }
 

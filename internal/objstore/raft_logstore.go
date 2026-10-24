@@ -251,7 +251,7 @@ func decodeRaftLog(data []byte, log *raft.Log) error {
 
 // Compile-time assertions.
 var (
-	_ raft.LogStore   = (*RaftLogStore)(nil)
+	_ raft.LogStore    = (*RaftLogStore)(nil)
 	_ raft.StableStore = (*RaftLogStore)(nil)
 )
 

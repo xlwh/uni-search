@@ -47,7 +47,7 @@ func encodeDoubleDeltaBlock(data *BlockData) ([]byte, error) {
 		}
 		out = appendU64LE(out, uint64(v0))
 		out = appendU64LE(out, 0) // first_delta = 0
-		out = append(out, 0)     // bit_width = 0
+		out = append(out, 0)      // bit_width = 0
 		return out, nil
 	}
 

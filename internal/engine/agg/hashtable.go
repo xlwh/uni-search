@@ -62,8 +62,8 @@ func (g *goMapBackend) Iterate(fn func(key any, bucket *groupBucket) bool) {
 	}
 }
 
-func (g *goMapBackend) Len() int  { return len(g.groups) }
-func (g *goMapBackend) Reset()    { g.groups = make(map[string]*groupBucket) }
+func (g *goMapBackend) Len() int { return len(g.groups) }
+func (g *goMapBackend) Reset()   { g.groups = make(map[string]*groupBucket) }
 
 // --- FixedHashTableU64 (long/date/ip keys) ----------------------------------
 
@@ -78,8 +78,8 @@ type fixedHashTableU64 struct {
 }
 
 type u64Slot struct {
-	key   uint64 // 0 = empty; keys are offset by +1 to allow 0 as valid key
-	bIdx   uint32 // index into buckets slice
+	key  uint64 // 0 = empty; keys are offset by +1 to allow 0 as valid key
+	bIdx uint32 // index into buckets slice
 }
 
 func newFixedHashTableU64(capacity int, aggDefs []AggDef) *fixedHashTableU64 {

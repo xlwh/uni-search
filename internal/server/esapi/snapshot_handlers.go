@@ -8,7 +8,7 @@ import (
 	"github.com/unisearch-db/unisearch/internal/snapshot"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.6
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.6
 
 // handleListSnapshotRepos handles GET /_snapshot (list all repos).
 func (s *Server) handleListSnapshotRepos(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +136,7 @@ func (s *Server) makeSnapshotStatusHandler(repo, snapshotName string) http.Handl
 }
 
 // makeVerifyRepoHandler handles POST /_snapshot/{repo}/_verify.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.6.3
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.6.3
 func (s *Server) makeVerifyRepoHandler(repo string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := s.snapshotRepos.VerifyRepo(repo); err != nil {

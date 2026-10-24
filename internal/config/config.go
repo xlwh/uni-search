@@ -78,10 +78,10 @@ type MemTableConfig struct {
 
 // StorageConfig holds column-store segment tuning.
 type StorageConfig struct {
-	SegmentBlockRows int              `yaml:"segment_block_rows"`
-	MmapAdvice       MmapAdviceConfig `yaml:"mmap_advice"`
-	CacheDir         string           `yaml:"cache_dir"`
-	CacheSizeMB      int              `yaml:"cache_size_mb"`
+	SegmentBlockRows int                    `yaml:"segment_block_rows"`
+	MmapAdvice       MmapAdviceConfig       `yaml:"mmap_advice"`
+	CacheDir         string                 `yaml:"cache_dir"`
+	CacheSizeMB      int                    `yaml:"cache_size_mb"`
 	SegmentRetention SegmentRetentionConfig `yaml:"segment_retention"`
 }
 
@@ -101,7 +101,7 @@ type MmapAdviceConfig struct {
 // @spec: ./active_specs/2026-10-23-iresearch-features-import/02_spec.md#2.8
 type SegmentRetentionConfig struct {
 	MaxOldSegments int      `yaml:"max_old_segments"`
-	TempDirTTL      Duration `yaml:"temp_dir_ttl"`
+	TempDirTTL     Duration `yaml:"temp_dir_ttl"`
 }
 
 // QueryConfig holds query engine tuning.
@@ -155,7 +155,7 @@ type CloudConfig struct {
 
 // ObjStoreConfig holds S3-compatible object storage connection params.
 type ObjStoreConfig struct {
-	Endpoint  string `yaml:"endpoint"`   // e.g. "minio:9000"
+	Endpoint  string `yaml:"endpoint"` // e.g. "minio:9000"
 	AccessKey string `yaml:"access_key"`
 	SecretKey string `yaml:"secret_key"`
 	Bucket    string `yaml:"bucket"`
@@ -191,7 +191,7 @@ func Default() Config {
 			CacheSizeMB: 1024,
 			SegmentRetention: SegmentRetentionConfig{
 				MaxOldSegments: 3,
-				TempDirTTL:      Duration(300 * time.Second),
+				TempDirTTL:     Duration(300 * time.Second),
 			},
 		},
 		Index: IndexConfig{

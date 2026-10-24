@@ -7,10 +7,10 @@ package memtable
 // and is silently skipped, returning the previous result.
 // @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#1.2.1
 type DedupWindow struct {
-	entries  map[string]uint64   // client_id → max_seq
-	results  map[string][]byte    // client_id → last result (serialized)
-	order    []string             // LRU order (oldest first)
-	maxLen   int                  // capacity (default 1_000_000)
+	entries map[string]uint64 // client_id → max_seq
+	results map[string][]byte // client_id → last result (serialized)
+	order   []string          // LRU order (oldest first)
+	maxLen  int               // capacity (default 1_000_000)
 }
 
 // NewDedupWindow creates a dedup window with the given capacity.

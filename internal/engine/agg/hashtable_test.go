@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/unisearch-db/unisearch/internal/meta"
 	"github.com/stretchr/testify/require"
+	"github.com/unisearch-db/unisearch/internal/meta"
 )
 
 // @spec: 02_spec.md#4.8 F3-T01..T07

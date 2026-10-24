@@ -21,13 +21,13 @@ import (
 // FilterCache caches filter→bitmap results per segment.
 // Keyed by FNV-1a hash of the AST-normalized filter DSL JSON.
 type FilterCache struct {
-	maxEntries int
-	ttl        time.Duration
-	mu         sync.RWMutex
-	entries    map[uint64]*cacheEntry
-	lru        *list.List // LRU eviction order (front = most recent)
-	notifyCh   chan SegmentChangeEvent
-	janitorCtx context.Context
+	maxEntries    int
+	ttl           time.Duration
+	mu            sync.RWMutex
+	entries       map[uint64]*cacheEntry
+	lru           *list.List // LRU eviction order (front = most recent)
+	notifyCh      chan SegmentChangeEvent
+	janitorCtx    context.Context
 	janitorCancel context.CancelFunc
 }
 
@@ -99,7 +99,7 @@ func (fc *FilterCache) Put(key uint64, segID types.SegmentID, bm *roaring.Bitmap
 	entry := &cacheEntry{
 		key:       key,
 		segmentID: segID,
-		bitmap:     bm,
+		bitmap:    bm,
 		expireAt:  time.Now().Add(fc.ttl),
 	}
 	entry.lruElem = fc.lru.PushFront(entry)

@@ -85,5 +85,5 @@ var HammingDistanceBatch func(qBits []byte, codesFlat []byte, codeOffsets []int3
 //
 // Contract: Panics when len(q) != len(docF16). Empty vectors yield 0.
 //
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.4
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.4
 var DotF16F32 func(q []float32, docF16 []uint16) float32

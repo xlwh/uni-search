@@ -12,7 +12,7 @@ import (
 
 // ---------------------------------------------------------------------------
 // P² (P-square) online quantile estimation tests.
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.11
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.11
 // ---------------------------------------------------------------------------
 
 func TestPSquare_Median(t *testing.T) {
@@ -129,7 +129,7 @@ func TestPSquare_CompareWithSort(t *testing.T) {
 	e := NewPSquareEstimator(0.75)
 
 	for i := range data {
-		v := rng.NormFloat64() * 10 + 50 // mean=50, stddev=10
+		v := rng.NormFloat64()*10 + 50 // mean=50, stddev=10
 		data[i] = v
 		e.Add(v)
 	}

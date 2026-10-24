@@ -18,9 +18,9 @@ import (
 
 // SpecTest represents one test section from a rest-api-spec yaml file.
 type SpecTest struct {
-	Name    string
-	Setup   []SpecAction
-	Tests   []SpecTestSection
+	Name  string
+	Setup []SpecAction
+	Tests []SpecTestSection
 }
 
 // SpecTestSection is one "test name" section with actions.
@@ -31,11 +31,11 @@ type SpecTestSection struct {
 
 // SpecAction is one do/match/assert action.
 type SpecAction struct {
-	Type   string                 // "do", "match", "assert", "set"
-	Do     map[string]any         // API call (for "do" type)
-	Match  map[string]any         // expected value (for "match" type)
-	Assert string                // assertion expression (for "assert" type)
-	Set    map[string]any         // variable setting (for "set" type)
+	Type   string         // "do", "match", "assert", "set"
+	Do     map[string]any // API call (for "do" type)
+	Match  map[string]any // expected value (for "match" type)
+	Assert string         // assertion expression (for "assert" type)
+	Set    map[string]any // variable setting (for "set" type)
 }
 
 // LoadDir loads all .yaml files from a directory and returns SpecTests.

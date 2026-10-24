@@ -11,7 +11,7 @@ import (
 	apierr "github.com/unisearch-db/unisearch/internal/errors"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.8
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.8
 
 // asyncSearchEntry holds the state and result of one async search.
 type asyncSearchEntry struct {
@@ -148,10 +148,10 @@ func (s *Server) handleSubmitAsyncSearch(w http.ResponseWriter, r *http.Request)
 	id := s.asyncSearchMgr.Submit(indices, body, keepAlive)
 	entry := s.asyncSearchMgr.Get(id)
 	resp := map[string]any{
-		"id":                     id,
-		"is_running":             entry.isRunning,
-		"is_partial":             entry.isPartial,
-		"start_time_in_millis":   entry.startTime.UnixMilli(),
+		"id":                        id,
+		"is_running":                entry.isRunning,
+		"is_partial":                entry.isPartial,
+		"start_time_in_millis":      entry.startTime.UnixMilli(),
 		"expiration_time_in_millis": entry.expirationTime.UnixMilli(),
 	}
 	if entry.result != nil {
@@ -172,10 +172,10 @@ func (s *Server) handleGetAsyncSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := map[string]any{
-		"id":                     id,
-		"is_running":             entry.isRunning,
-		"is_partial":             entry.isPartial,
-		"start_time_in_millis":   entry.startTime.UnixMilli(),
+		"id":                        id,
+		"is_running":                entry.isRunning,
+		"is_partial":                entry.isPartial,
+		"start_time_in_millis":      entry.startTime.UnixMilli(),
 		"expiration_time_in_millis": entry.expirationTime.UnixMilli(),
 	}
 	if entry.searchErr != nil {
@@ -200,9 +200,9 @@ func (s *Server) handleGetAsyncSearchStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	writeJSON(w, 0, map[string]any{
-		"id":             id,
-		"is_running":     entry.isRunning,
-		"is_partial":     entry.isPartial,
+		"id":                   id,
+		"is_running":           entry.isRunning,
+		"is_partial":           entry.isPartial,
 		"start_time_in_millis": entry.startTime.UnixMilli(),
 	})
 }
@@ -223,10 +223,10 @@ func (s *Server) makeAsyncSearchGetHandler(id string) http.HandlerFunc {
 			return
 		}
 		resp := map[string]any{
-			"id":                     id,
-			"is_running":             entry.isRunning,
-			"is_partial":             entry.isPartial,
-			"start_time_in_millis":   entry.startTime.UnixMilli(),
+			"id":                        id,
+			"is_running":                entry.isRunning,
+			"is_partial":                entry.isPartial,
+			"start_time_in_millis":      entry.startTime.UnixMilli(),
 			"expiration_time_in_millis": entry.expirationTime.UnixMilli(),
 		}
 		if entry.searchErr != nil {

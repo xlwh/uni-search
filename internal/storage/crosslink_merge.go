@@ -31,8 +31,8 @@ func NewCrossLinkMerger() *CrossLinkMerger {
 
 // MergePlan describes a cross-link merge operation.
 type MergePlan struct {
-	SourceSegIDs []types.SegmentID  // segments to merge
-	TargetSegID  types.SegmentID    // new merged segment ID (reuses one source)
+	SourceSegIDs []types.SegmentID // segments to merge
+	TargetSegID  types.SegmentID   // new merged segment ID (reuses one source)
 	SegID        types.SegmentID
 }
 
@@ -147,7 +147,7 @@ func mergeIndexes(entries []*SegmentEntry) map[types.FieldID]index.LoadedIndex {
 type CrossLinkRef struct {
 	SourceSegID types.SegmentID
 	TargetSegID types.SegmentID
-	NodeOffset  int32  // offset in the HNSW graph
+	NodeOffset  int32 // offset in the HNSW graph
 }
 
 // RebuildCrossLinks reconstructs crosslinks after a merge by scanning

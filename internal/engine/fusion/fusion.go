@@ -80,7 +80,7 @@ func NewFusion(spec dsl.RankSpec) (Fusion, error) {
 		// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#2.2.4
 		return &RelativeScoreFusion{Window: spec.WindowSize}, nil
 	case dsl.RankMethodDBSF:
-		// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.2
+		// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.2
 		return &DBSFFusion{Weights: append([]float64(nil), spec.Weights...), Window: spec.WindowSize, K: 3.0}, nil
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedMethod, spec.Method)
@@ -277,7 +277,7 @@ func (f *RelativeScoreFusion) Merge(cands [][]ScoredDoc) ([]ScoredDoc, error) {
 // Documents not appearing in a path contribute 0 (the mean) for that path.
 // The normalization factor k (default 3.0) maps ±3σ to approximately [-1, 1].
 //
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.2
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.2
 type DBSFFusion struct {
 	Weights []float64 // per-path weights; nil → equal 1/n
 	Window  int       // per-path truncation before statistics
@@ -318,7 +318,10 @@ func (f *DBSFFusion) Merge(cands [][]ScoredDoc) ([]ScoredDoc, error) {
 	}
 
 	// 2. Per-path mean and variance (Welford single-pass).
-	type stats struct{ mean, m2 float64; count int }
+	type stats struct {
+		mean, m2 float64
+		count    int
+	}
 	pathStats := make([]stats, n)
 	for i, path := range truncated {
 		s := stats{}

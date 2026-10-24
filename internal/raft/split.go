@@ -23,38 +23,38 @@ type SplitCoordinator struct {
 	activeSplits map[types.ShardID]*SplitState
 
 	// Hooks for shard operations (injected by the cluster manager).
-	freezeShard   func(types.ShardID) error              // freeze parent writes
-	getBitmap     func(types.ShardID) (*roaring.Bitmap, error)  // get parent's DeleteBitmap
-	createChild   func(types.ShardID, []types.SegmentID, *roaring.Bitmap) error  // create child with inherited segments
-	replayWAL     func(types.ShardID, types.ShardID, int64) (int64, error)  // replay WAL from parent to child
-	switchRoute   func(types.ShardID, uint64) error     // atomic route gen switch
-	decommission  func(types.ShardID) error              // decommission parent
+	freezeShard  func(types.ShardID) error                                     // freeze parent writes
+	getBitmap    func(types.ShardID) (*roaring.Bitmap, error)                  // get parent's DeleteBitmap
+	createChild  func(types.ShardID, []types.SegmentID, *roaring.Bitmap) error // create child with inherited segments
+	replayWAL    func(types.ShardID, types.ShardID, int64) (int64, error)      // replay WAL from parent to child
+	switchRoute  func(types.ShardID, uint64) error                             // atomic route gen switch
+	decommission func(types.ShardID) error                                     // decommission parent
 }
 
 // SplitState tracks one in-progress split operation.
 type SplitState struct {
-	ParentID      types.ShardID
-	ChildIDs      []types.ShardID
-	OldGen        uint64
-	NewGen        uint64
-	SplitKey      uint32   // hash modulo split point
-	Phase         SplitPhase
+	ParentID types.ShardID
+	ChildIDs []types.ShardID
+	OldGen   uint64
+	NewGen   uint64
+	SplitKey uint32 // hash modulo split point
+	Phase    SplitPhase
 	// Tracking fields populated during split
-	ParentSegs    []types.SegmentID  // parent segment IDs (for inheritance)
-	ChildBitmaps  []*roaring.Bitmap   // per-child DeleteBitmap copies
-	WALCursor     int64              // WAL replay cursor position
-	Frozen        bool               // parent frozen flag
-	ChildrenReady bool               // children created flag
+	ParentSegs    []types.SegmentID // parent segment IDs (for inheritance)
+	ChildBitmaps  []*roaring.Bitmap // per-child DeleteBitmap copies
+	WALCursor     int64             // WAL replay cursor position
+	Frozen        bool              // parent frozen flag
+	ChildrenReady bool              // children created flag
 }
 
 // SplitPhase enumerates the split protocol phases.
 type SplitPhase int
 
 const (
-	SplitPhaseInitiated SplitPhase = iota  // SplitShard command applied to meta
-	SplitPhaseDualRead                     // Parent in dual-read, children created
-	SplitPhaseCatching                     // Children pulling incremental WAL
-	SplitPhaseComplete                     // Parent decommissioned
+	SplitPhaseInitiated SplitPhase = iota // SplitShard command applied to meta
+	SplitPhaseDualRead                    // Parent in dual-read, children created
+	SplitPhaseCatching                    // Children pulling incremental WAL
+	SplitPhaseComplete                    // Parent decommissioned
 )
 
 // NewSplitCoordinator creates a split coordinator.

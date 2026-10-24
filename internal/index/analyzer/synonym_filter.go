@@ -10,7 +10,7 @@ import "strings"
 // Rules support the "=>" explicit mapping form: "a, b => c" means
 // tokens "a" and "b" are replaced by token "c" (one-way).
 //
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.9.2
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.9.2
 type SynonymFilter struct {
 	// synonyms maps each term to the set of replacement terms.
 	// For "happy, joy, glad" each of happy→{joy,glad}, joy→{happy,glad}, etc.

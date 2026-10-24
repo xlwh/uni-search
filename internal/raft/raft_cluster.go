@@ -23,23 +23,23 @@ import (
 type RaftClusterConfig struct {
 	NodeID      string
 	DataDir     string
-	RaftAddr    string  // e.g. "127.0.0.1:8080"
-	Peers       []string  // peer addresses for bootstrap
+	RaftAddr    string   // e.g. "127.0.0.1:8080"
+	Peers       []string // peer addresses for bootstrap
 	SnapshotDir string
 }
 
 // RaftCluster wraps hashicorp/raft with MetaFSM for real consensus.
 // @spec: ./archive/2026-10-20-m2-cloud-native-ga/02_spec.md#2.1
 type RaftCluster struct {
-	mu       sync.RWMutex
-	raft     *raft.Raft
-	fsm      *MetaFSM
-	config   RaftClusterConfig
-	transport raft.Transport
-	logStore  raft.LogStore
+	mu          sync.RWMutex
+	raft        *raft.Raft
+	fsm         *MetaFSM
+	config      RaftClusterConfig
+	transport   raft.Transport
+	logStore    raft.LogStore
 	stableStore raft.StableStore
-	snapStore  raft.SnapshotStore
-	closed    bool
+	snapStore   raft.SnapshotStore
+	closed      bool
 }
 
 // NewRaftCluster creates a real hashicorp/raft-backed meta cluster.
@@ -121,7 +121,7 @@ func NewRaftCluster(cfg RaftClusterConfig) (*RaftCluster, error) {
 	if len(cfg.Peers) > 0 {
 		servers := make([]raft.Server, len(cfg.Peers))
 		for i, peer := range cfg.Peers {
-			parts := splitPeer(peer)  // "id@addr" → (id, addr)
+			parts := splitPeer(peer) // "id@addr" → (id, addr)
 			servers[i] = raft.Server{
 				ID:      raft.ServerID(parts[0]),
 				Address: raft.ServerAddress(parts[1]),

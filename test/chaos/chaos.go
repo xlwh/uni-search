@@ -17,17 +17,17 @@ type Scenario struct {
 	Name        string
 	Description string
 	FaultType   FaultType
-	Target      string  // node role or network link
+	Target      string // node role or network link
 	Duration    time.Duration
-	Expected    string  // expected behavior
+	Expected    string // expected behavior
 }
 
 // FaultType enumerates the fault injection types.
 type FaultType int
 
 const (
-	FaultKill      FaultType = iota  // kill -9 a node
-	FaultPartition                  // network partition
+	FaultKill       FaultType = iota // kill -9 a node
+	FaultPartition                   // network partition
 	FaultSlowIO                      // slow IO injection (toxiproxy latency)
 	FaultDualKill                    // kill two nodes simultaneously
 	FaultRetry                       // force retry after failure
@@ -40,42 +40,42 @@ func AllScenarios() []Scenario {
 		{
 			ID: "C1", Name: "kill-leader",
 			Description: "Kill shard leader with SIGKILL",
-			FaultType: FaultKill, Target: "shard-leader",
+			FaultType:   FaultKill, Target: "shard-leader",
 			Duration: 30 * time.Second,
 			Expected: "RTO <30s, queries auto-failover to replica",
 		},
 		{
 			ID: "C2", Name: "network-partition",
 			Description: "Partition meta minority from majority",
-			FaultType: FaultPartition, Target: "meta-minority",
+			FaultType:   FaultPartition, Target: "meta-minority",
 			Duration: 60 * time.Second,
 			Expected: "Quorum maintained, minority nodes read-only",
 		},
 		{
 			ID: "C3", Name: "slow-io",
 			Description: "Inject 5s latency to S3 object storage",
-			FaultType: FaultSlowIO, Target: "s3-link",
+			FaultType:   FaultSlowIO, Target: "s3-link",
 			Duration: 60 * time.Second,
 			Expected: "P99 degradation <2× (NVMe hot path unaffected)",
 		},
 		{
 			ID: "C4", Name: "split-dual-kill",
 			Description: "Kill both child shard leaders during split",
-			FaultType: FaultDualKill, Target: "child-leaders",
+			FaultType:   FaultDualKill, Target: "child-leaders",
 			Duration: 30 * time.Second,
 			Expected: "Query zero-disruption (gen rollback, dual-read)",
 		},
 		{
 			ID: "C5", Name: "split-retry",
 			Description: "Force child shard election failure + retry",
-			FaultType: FaultRetry, Target: "child-election",
+			FaultType:   FaultRetry, Target: "child-election",
 			Duration: 30 * time.Second,
 			Expected: "Split eventually succeeds after retry",
 		},
 		{
 			ID: "C6", Name: "split-brain-recovery",
 			Description: "Network split causes quorum loss, then recover",
-			FaultType: FaultSplitBrain, Target: "meta-cluster",
+			FaultType:   FaultSplitBrain, Target: "meta-cluster",
 			Duration: 90 * time.Second,
 			Expected: "Data consistency verified after quorum rebuild",
 		},
@@ -162,13 +162,13 @@ func ToxiproxyConfig() string {
 
 // ScenarioReport is the result of running one chaos scenario.
 type ScenarioReport struct {
-	ScenarioID  string
-	Passed      bool
-	Duration    time.Duration
-	Details     string
-	RTO         time.Duration  // recovery time (for C1)
-	P99Before   float64        // P99 latency before fault (ms)
-	P99After    float64        // P99 latency after fault (ms)
+	ScenarioID     string
+	Passed         bool
+	Duration       time.Duration
+	Details        string
+	RTO            time.Duration // recovery time (for C1)
+	P99Before      float64       // P99 latency before fault (ms)
+	P99After       float64       // P99 latency after fault (ms)
 	DataConsistent bool
 }
 
@@ -215,9 +215,9 @@ func RunScenario(scenario Scenario) ScenarioReport {
 	recovered := waitForRecovery(scenario.Target, scenario.Duration)
 	return ScenarioReport{
 		ScenarioID: scenario.ID,
-		Passed:    recovered,
-		Duration:  time.Since(start),
-		Details:   scenario.Expected,
+		Passed:     recovered,
+		Duration:   time.Since(start),
+		Details:    scenario.Expected,
 	}
 }
 

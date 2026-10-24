@@ -27,16 +27,16 @@ const (
 
 // TierConfig holds the age thresholds for automatic migration (D5).
 type TierConfig struct {
-	HotAge  time.Duration  // segments younger than this stay hot
-	WarmAge time.Duration  // between HotAge and WarmAge → warm
+	HotAge  time.Duration // segments younger than this stay hot
+	WarmAge time.Duration // between HotAge and WarmAge → warm
 	// older than WarmAge → cold
 }
 
 // DefaultTierConfig returns the default age thresholds.
 func DefaultTierConfig() TierConfig {
 	return TierConfig{
-		HotAge:  7 * 24 * time.Hour,   // 7 days
-		WarmAge: 30 * 24 * time.Hour,  // 30 days
+		HotAge:  7 * 24 * time.Hour,  // 7 days
+		WarmAge: 30 * 24 * time.Hour, // 30 days
 	}
 }
 
@@ -45,8 +45,8 @@ func DefaultTierConfig() TierConfig {
 type MigratableSegment interface {
 	ID() types.SegmentID
 	NumRows() int
-	Serialize() []byte  // serialize full segment data for S3 upload
-	GetVectors() [][]float32  // return full-precision vectors for quantization
+	Serialize() []byte       // serialize full segment data for S3 upload
+	GetVectors() [][]float32 // return full-precision vectors for quantization
 }
 
 // TierManager decides when to migrate segments between tiers and
@@ -56,7 +56,7 @@ type TierManager struct {
 	config TierConfig
 
 	// Dependencies for real data migration
-	s3Client  objstore.S3Client  // for warm→cold upload
+	s3Client  objstore.S3Client    // for warm→cold upload
 	quantizer *hnsw.RaBitQuantizer // for hot→warm quantization
 }
 
@@ -87,8 +87,8 @@ type MigrationAction int
 
 const (
 	ActionNone       MigrationAction = iota // stay in current tier
-	ActionHotToWarm                          // migrate hot → warm
-	ActionWarmToCold                         // migrate warm → cold
+	ActionHotToWarm                         // migrate hot → warm
+	ActionWarmToCold                        // migrate warm → cold
 )
 
 // Classify determines the target tier for a segment based on its age.

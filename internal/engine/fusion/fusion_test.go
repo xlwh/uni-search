@@ -226,7 +226,7 @@ func TestR16_UnsupportedMethod(t *testing.T) {
 
 // ---------------------------------------------------------------------------
 // DBSF (Distribution-Based Score Fusion) tests.
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.2
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.2
 // ---------------------------------------------------------------------------
 
 func TestDBSF_Correctness(t *testing.T) {

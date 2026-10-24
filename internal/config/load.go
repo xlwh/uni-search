@@ -26,9 +26,9 @@ type Options struct {
 
 	// Command-line flag overrides; nil pointers are skipped. These form
 	// the highest layer.
-	Mode        *string
-	Listen      *string
-	DataDir     *string
+	Mode         *string
+	Listen       *string
+	DataDir      *string
 	AdminEnabled *bool
 	AdminListen  *string
 

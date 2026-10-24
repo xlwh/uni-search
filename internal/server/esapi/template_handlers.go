@@ -9,7 +9,7 @@ import (
 	"github.com/unisearch-db/unisearch/internal/jsonx"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.5
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.5
 
 // renderTemplate performs simple {{var}} substitution on a template body.
 func renderTemplate(template []byte, params map[string]any) []byte {
@@ -33,7 +33,9 @@ func toString(v any) string {
 	case int64:
 		return fmt.Sprintf("%d", t)
 	case bool:
-		if t { return "true" }
+		if t {
+			return "true"
+		}
 		return "false"
 	default:
 		return fmt.Sprintf("%v", t)
@@ -48,8 +50,8 @@ func (s *Server) handleSearchTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Inline       string         `json:"inline"`
-		Params       map[string]any `json:"params"`
+		Inline string         `json:"inline"`
+		Params map[string]any `json:"params"`
 	}
 	if err := jsonx.Unmarshal(body, &req); err != nil {
 		writeError(w, apierr.NewIllegalArgument("invalid JSON: "+err.Error()))
@@ -98,7 +100,7 @@ func (s *Server) handleRenderTemplate(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------
 // _scripts stored template CRUD (es-feature-gap-fill P2)
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.5
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.5
 // ---------------------------------------------------------------------------
 
 func (s *Server) makePutScriptHandler(id string) http.HandlerFunc {

@@ -29,7 +29,7 @@ type LogStore struct {
 type logSegment struct {
 	seq  uint64
 	data []byte
-	key  string  // S3 key: wal/{shard}/{gen}/{seq}.log
+	key  string // S3 key: wal/{shard}/{gen}/{seq}.log
 }
 
 // NewLogStore creates a double-write LogStore.

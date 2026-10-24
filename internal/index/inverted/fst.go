@@ -37,7 +37,7 @@ type fstNode struct {
 	output      uint32 // 0 = no output; terminal nodes set this to TermID+1
 	isFinal     bool
 	// frozen nodes get a compact serial ID for the registry key
-	frozenID   int32 // -1 = not frozen
+	frozenID int32 // -1 = not frozen
 }
 
 type fstTransition struct {
@@ -103,11 +103,11 @@ func (n *fstNode) registryKey() string {
 // FSTBuilder constructs a minimal acyclic FST from sorted terms.
 type FSTBuilder struct {
 	root      *fstNode
-	frontier  []*fstNode // nodes along the path of the current term
-	prevTerm  []byte     // last added term (for common prefix detection)
+	frontier  []*fstNode          // nodes along the path of the current term
+	prevTerm  []byte              // last added term (for common prefix detection)
 	registry  map[string]*fstNode // frozen node registry
-	nextID    int32      // next frozen ID
-	nodeCount int        // total nodes created
+	nextID    int32               // next frozen ID
+	nodeCount int                 // total nodes created
 }
 
 // NewFSTBuilder creates an empty builder. Terms must be added in
@@ -115,10 +115,10 @@ type FSTBuilder struct {
 func NewFSTBuilder() *FSTBuilder {
 	root := &fstNode{frozenID: -1}
 	return &FSTBuilder{
-		root:     root,
-		frontier: []*fstNode{root},
-		registry: make(map[string]*fstNode),
-		nextID:   1,
+		root:      root,
+		frontier:  []*fstNode{root},
+		registry:  make(map[string]*fstNode),
+		nextID:    1,
 		nodeCount: 1,
 	}
 }
@@ -272,7 +272,7 @@ func (f *FST) NodeCount() int { return f.nodeCount }
 func (f *FST) Fingerprint(term []byte) uint64 {
 	const (
 		offset64 uint64 = 1469598103934665603 // FNV-1a offset basis
-		prime64   uint64 = 1099511628211       // FNV-1a prime
+		prime64  uint64 = 1099511628211       // FNV-1a prime
 	)
 	h := offset64
 	node := f.root
@@ -331,10 +331,10 @@ type FSTIterator struct {
 }
 
 type fstIterFrame struct {
-	node    *fstNode
-	transIdx int    // next transition to visit
-	byteVal  byte   // byte that led to this node
-	depth    int    // term length at this frame
+	node     *fstNode
+	transIdx int  // next transition to visit
+	byteVal  byte // byte that led to this node
+	depth    int  // term length at this frame
 }
 
 // NewFSTIterator creates an iterator over all terms, or terms with the

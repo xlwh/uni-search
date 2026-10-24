@@ -570,7 +570,7 @@ func getFieldType(idx *indexState, field string) meta.FieldType {
 
 // ---------------------------------------------------------------------------
 // P0 DSL query translators (es-feature-gap-fill)
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2
 // ---------------------------------------------------------------------------
 
 // translateConstantScore wraps the inner query in a filter context.

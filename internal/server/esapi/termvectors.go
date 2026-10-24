@@ -10,20 +10,20 @@ import (
 	"github.com/unisearch-db/unisearch/internal/jsonx"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.10
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.10
 
 // TermVectorsResponse is the ES _termvectors response structure.
 type TermVectorsResponse struct {
-	Index       string                       `json:"_index"`
-	ID          string                       `json:"_id"`
-	Found       bool                         `json:"found"`
-	TermVectors map[string]FieldTermVector   `json:"term_vectors"`
+	Index       string                     `json:"_index"`
+	ID          string                     `json:"_id"`
+	Found       bool                       `json:"found"`
+	TermVectors map[string]FieldTermVector `json:"term_vectors"`
 }
 
 // FieldTermVector holds term statistics for one field.
 type FieldTermVector struct {
-	FieldStatistics *FieldStatistics `json:"field_statistics,omitempty"`
-	Terms            map[string]TermInfo `json:"terms"`
+	FieldStatistics *FieldStatistics    `json:"field_statistics,omitempty"`
+	Terms           map[string]TermInfo `json:"terms"`
 }
 
 // FieldStatistics holds field-level statistics.
@@ -38,7 +38,7 @@ type TermInfo struct {
 	TermFreq    int   `json:"term_freq"`
 	DocFreq     int   `json:"doc_freq,omitempty"`
 	TTF         int   `json:"ttf,omitempty"`
-	Positions  []int `json:"positions,omitempty"`
+	Positions   []int `json:"positions,omitempty"`
 	StartOffset []int `json:"start_offset,omitempty"`
 	EndOffset   []int `json:"end_offset,omitempty"`
 }
@@ -144,9 +144,9 @@ func (s *Server) handleTermVectors(w http.ResponseWriter, r *http.Request) {
 		// P1: field_statistics.
 		if includeFieldStats {
 			ftv.FieldStatistics = &FieldStatistics{
-				DocCount:    1,
-				SumDocFreq:  len(terms),
-				SumTTT:      len(tokens),
+				DocCount:   1,
+				SumDocFreq: len(terms),
+				SumTTT:     len(tokens),
 			}
 		}
 		termVectors[field] = ftv

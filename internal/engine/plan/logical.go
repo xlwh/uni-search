@@ -109,9 +109,9 @@ type Fusion struct {
 // matching documents, and runs the aggregations via the agg package.
 // @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.3
 type Aggregate struct {
-	Input     LogicalPlan       // documents to aggregate over
-	GroupField string            // group-by field name ("" for global agg)
-	Aggs      []AggDef           // sub-aggregation definitions
+	Input      LogicalPlan // documents to aggregate over
+	GroupField string      // group-by field name ("" for global agg)
+	Aggs       []AggDef    // sub-aggregation definitions
 }
 
 // AggDef mirrors agg.AggDef but lives in the plan package to avoid an
@@ -124,30 +124,30 @@ type AggDef struct {
 
 // planNode markers — Go has no marker methods on interfaces, so we
 // implement them as no-ops on every concrete node.
-func (*Scan) planNode()      {}
-func (*Filter) planNode()    {}
-func (*ANN) planNode()       {}
+func (*Scan) planNode()         {}
+func (*Filter) planNode()       {}
+func (*ANN) planNode()          {}
 func (*SparseVector) planNode() {}
-func (*BM25) planNode()      {}
-func (*TopN) planNode()      {}
-func (*Fusion) planNode()    {}
-func (*Aggregate) planNode()      {}
+func (*BM25) planNode()         {}
+func (*TopN) planNode()         {}
+func (*Fusion) planNode()       {}
+func (*Aggregate) planNode()    {}
 
 // Pipeline is the unified query pipeline node (Qdrant-style Query API).
 // It supports nested Prefetch sub-queries, fusion between prefetch
 // results, and optional rescore stages. Existing Fusion is the
 // simplified single-level version; Pipeline is the general superset.
 //
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.5
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.5
 type Pipeline struct {
-	Prefetches   []LogicalPlan    // sub-query plans (executed in parallel or sequentially)
-	FusionSpec   dsl.RankSpec     // fusion strategy between prefetch results
-	RescoreSpecs  []dsl.RescoreSpec // rescore stages applied after fusion
+	Prefetches   []LogicalPlan     // sub-query plans (executed in parallel or sequentially)
+	FusionSpec   dsl.RankSpec      // fusion strategy between prefetch results
+	RescoreSpecs []dsl.RescoreSpec // rescore stages applied after fusion
 	From         int
 	Size         int
 }
 
-func (*Pipeline) planNode() {}
+func (*Pipeline) planNode()       {}
 func (*ProjectionScan) planNode() {}
 
 // ProjectionScan is the F6 projection read node: it reads pre-computed

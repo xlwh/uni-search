@@ -11,8 +11,8 @@ import (
 func TestF6_ProjectionScanPlanNode(t *testing.T) {
 	p := &ProjectionScan{
 		SegID:          42,
-		ProjectionName:  "daily_stats",
-		GroupBy:         []string{"date", "category"},
+		ProjectionName: "daily_stats",
+		GroupBy:        []string{"date", "category"},
 		Aggs:           []AggDef{{Name: "sum_price", Type: "sum"}},
 	}
 	s := p.String()
@@ -32,7 +32,7 @@ func TestF6_R8OptimizerNoop(t *testing.T) {
 	plan := &Aggregate{
 		Input:      &Scan{SegID: 1, FieldType: "long"},
 		GroupField: "category",
-		Aggs:      []AggDef{{Name: "count", Type: "count"}},
+		Aggs:       []AggDef{{Name: "count", Type: "count"}},
 	}
 	optimized, trace := Optimize(plan, EstimatedSelectivity{}, 10)
 	require.NotNil(t, optimized)

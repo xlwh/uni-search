@@ -9,9 +9,9 @@ import (
 // @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.1.4
 func TestRouteForField(t *testing.T) {
 	tests := []struct {
-		name    string
-		esType  meta.FieldType
-		want    []IndexKind
+		name   string
+		esType meta.FieldType
+		want   []IndexKind
 	}{
 		{"text → inverted", meta.TypeText, []IndexKind{KindInverted}},
 		{"dense_vector → hnsw", meta.TypeDenseVector, []IndexKind{KindHNSW}},

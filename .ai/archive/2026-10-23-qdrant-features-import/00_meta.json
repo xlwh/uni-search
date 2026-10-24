@@ -1,8 +1,8 @@
 {
   "name": "2026-10-23-qdrant-features-import",
-  "status": "implemented",
+  "status": "archived",
   "created_at": "2026-10-23T08:51:10.371627+00:00",
-  "updated_at": "2026-10-23T10:03:25.563949+00:00",
+  "updated_at": "2026-10-24T12:00:00.000000",
   "description": "从 Qdrant 引入高级搜索与存储功能到 UniSearch（16 个功能，P0/P1/P2 三阶段）",
   "tags": [
     "feature",
@@ -30,6 +30,12 @@
       "to": "implemented",
       "timestamp": "2026-10-23T18:03:25.563940",
       "forced": true
+    },
+    {
+      "from": "implemented",
+      "to": "archived",
+      "timestamp": "2026-10-24T12:00:00.000000",
+      "forced": false
     }
   ]
 }

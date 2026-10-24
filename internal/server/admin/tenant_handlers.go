@@ -9,19 +9,19 @@ import (
 
 // tenantSummary is the JSON representation of a tenant's quota and usage.
 type tenantSummary struct {
-	ID            string `json:"id"`
-	StorageBytes  int64  `json:"storage_bytes"`
-	VectorCount   int64  `json:"vector_count"`
-	QueryQPS      int    `json:"query_qps"`
-	WriteTPS      int    `json:"write_tps"`
-	StorageUsed   int64  `json:"storage_used"`
-	VectorsUsed   int64  `json:"vectors_used"`
+	ID           string `json:"id"`
+	StorageBytes int64  `json:"storage_bytes"`
+	VectorCount  int64  `json:"vector_count"`
+	QueryQPS     int    `json:"query_qps"`
+	WriteTPS     int    `json:"write_tps"`
+	StorageUsed  int64  `json:"storage_used"`
+	VectorsUsed  int64  `json:"vectors_used"`
 }
 
 // createTenantRequest is the body for POST /api/tenants.
 type createTenantRequest struct {
-	TenantID string         `json:"tenant_id"`
-	Quota    tenant.Quota   `json:"quota"`
+	TenantID string       `json:"tenant_id"`
+	Quota    tenant.Quota `json:"quota"`
 }
 
 func rgToSummary(rg *tenant.ResourceGroup) tenantSummary {

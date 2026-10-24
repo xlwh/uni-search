@@ -5,7 +5,7 @@
 // count is small enough to benefit from concurrency without overwhelming
 // the system.
 //
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.5
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.5
 package exec
 
 import (
@@ -31,11 +31,11 @@ type FusionFunc func(paths [][]ScoredDoc) ([]ScoredDoc, error)
 // 2. Fuse results using the specified fusion function
 // 3. Apply rescore stages
 type PipelineOperator struct {
-	prefetches []Operator     // sub-query operators
-	fusion     FusionFunc     // fusion function (nil = just concatenate)
-	size       int            // final result count
-	done       bool          // single-shot guard
-	results    []ScoredDoc   // fused results
+	prefetches []Operator  // sub-query operators
+	fusion     FusionFunc  // fusion function (nil = just concatenate)
+	size       int         // final result count
+	done       bool        // single-shot guard
+	results    []ScoredDoc // fused results
 	mu         sync.Mutex
 }
 

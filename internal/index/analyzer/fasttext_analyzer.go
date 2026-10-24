@@ -18,7 +18,7 @@ type FastTextMode int
 
 const (
 	FastTextClassification FastTextMode = iota // output predicted labels
-	FastTextNearest                           // output nearest-neighbor words
+	FastTextNearest                            // output nearest-neighbor words
 )
 
 // FastTextAnalyzer implements Analyzer using a loaded FastText model.
@@ -32,11 +32,11 @@ type FastTextAnalyzer struct {
 
 // FastTextModel holds a parsed FastText model in memory.
 type FastTextModel struct {
-	args     ModelArgs
-	dict     Dictionary
-	input    []float32 // [dictSize × dim] embedding matrix
-	output   []float32 // [nLabels × dim] classification matrix
-	dim      int
+	args   ModelArgs
+	dict   Dictionary
+	input  []float32 // [dictSize × dim] embedding matrix
+	output []float32 // [nLabels × dim] classification matrix
+	dim    int
 }
 
 // ModelArgs holds FastText hyperparameters.

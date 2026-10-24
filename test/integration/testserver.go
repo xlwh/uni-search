@@ -21,8 +21,8 @@ import (
 
 // TestServer boots the embedded engine behind httptest.NewServer.
 type TestServer struct {
-	Engine *embedded.Engine
-	Server *httptest.Server
+	Engine  *embedded.Engine
+	Server  *httptest.Server
 	DataDir string
 }
 

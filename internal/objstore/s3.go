@@ -26,12 +26,12 @@ type S3Client interface {
 
 // S3Config holds the connection configuration.
 type S3Config struct {
-	Endpoint   string  // e.g. "localhost:9000" (MinIO) or "s3.amazonaws.com"
-	AccessKey  string
-	SecretKey  string
-	Bucket     string
-	UseSSL     bool
-	Region     string
+	Endpoint  string // e.g. "localhost:9000" (MinIO) or "s3.amazonaws.com"
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	UseSSL    bool
+	Region    string
 }
 
 // MemS3Client is an in-memory S3 client for testing.

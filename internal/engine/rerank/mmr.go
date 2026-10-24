@@ -5,10 +5,11 @@
 //	MMR(d) = λ · sim(q, d) − (1−λ) · max_{s ∈ S} sim(d, s)
 //
 // where λ (lambda) controls the relevance/diversity trade-off:
-//   λ=1.0 → pure relevance (original score ordering)
-//   λ=0.0 → pure diversity (maximize dissimilarity to selected set)
 //
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.3
+//	λ=1.0 → pure relevance (original score ordering)
+//	λ=0.0 → pure diversity (maximize dissimilarity to selected set)
+//
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.3
 package rerank
 
 import (

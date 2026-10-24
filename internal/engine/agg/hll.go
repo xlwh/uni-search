@@ -12,11 +12,11 @@ import (
 // to dense when the register count exceeds a threshold.
 // @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.3
 type HLL struct {
-	p           int        // precision: bits for register index (4-18)
-	m           uint64     // number of registers: 2^p
-	registers   []uint8    // dense registers (nil when sparse)
-	sparse      map[uint32]uint8 // sparse representation
-	sparseOnly  bool
+	p          int              // precision: bits for register index (4-18)
+	m          uint64           // number of registers: 2^p
+	registers  []uint8          // dense registers (nil when sparse)
+	sparse     map[uint32]uint8 // sparse representation
+	sparseOnly bool
 }
 
 // NewHLL creates an HLL with the given precision (default 14).

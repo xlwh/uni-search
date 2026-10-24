@@ -30,7 +30,7 @@ func TestPQ_TrainAndEncode(t *testing.T) {
 	pq, err := trainPQ(g, 8)
 	require.NoError(t, err)
 	assert.Equal(t, 8, pq.m)
-	assert.Equal(t, 8, pq.dsub) // 64/8=8
+	assert.Equal(t, 8, pq.dsub)         // 64/8=8
 	assert.Equal(t, n*8, len(pq.codes)) // n*m bytes
 	// Each code must be in [0, 255].
 	for _, c := range pq.codes {

@@ -60,8 +60,8 @@ func (h wandHeap) Less(i, j int) bool {
 	}
 	return h[i].docID > h[j].docID // tie-break: larger docID = worse
 }
-func (h wandHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *wandHeap) Push(x any)          { *h = append(*h, x.(wandCand)) }
+func (h wandHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h *wandHeap) Push(x any)   { *h = append(*h, x.(wandCand)) }
 func (h *wandHeap) Pop() any {
 	old := *h
 	n := len(old)

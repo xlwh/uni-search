@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.5.6
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.5.6
 
 func (s *Server) handleCatAliases(w http.ResponseWriter, r *http.Request) {
 	// List all aliases across indices.

@@ -14,31 +14,31 @@ import (
 
 // RebalanceCoordinator manages shard migration between nodes.
 type RebalanceCoordinator struct {
-	mu        sync.Mutex
-	active    map[string]*RebalanceState  // shard ID → state
+	mu     sync.Mutex
+	active map[string]*RebalanceState // shard ID → state
 	// Hooks for actual data migration (design 05 §3.3).
 	// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#3.6
-	pullSnapshot  func(shardID, source, target string) error
+	pullSnapshot    func(shardID, source, target string) error
 	syncIncremental func(shardID, source, target string) error
-	switchRoute   func(shardID string) error
+	switchRoute     func(shardID string) error
 }
 
 // RebalanceState tracks one in-progress migration.
 type RebalanceState struct {
-	ShardID     string
-	SourceNode  string
-	TargetNode  string
-	Phase       RebalancePhase
-	StartedAt   time.Time
+	ShardID    string
+	SourceNode string
+	TargetNode string
+	Phase      RebalancePhase
+	StartedAt  time.Time
 }
 
 // RebalancePhase enumerates the three-phase migration.
 type RebalancePhase int
 
 const (
-	RebalancePhaseSnapshot RebalancePhase = iota  // target pulls snapshot from source
-	RebalancePhaseIncremental                     // target syncs incremental WAL
-	RebalancePhaseComplete                        // route table atomically switched
+	RebalancePhaseSnapshot    RebalancePhase = iota // target pulls snapshot from source
+	RebalancePhaseIncremental                       // target syncs incremental WAL
+	RebalancePhaseComplete                          // route table atomically switched
 )
 
 // NewRebalanceCoordinator creates a rebalance coordinator.
@@ -134,7 +134,7 @@ func (rc *RebalanceCoordinator) GetState(shardID string) (*RebalanceState, bool)
 // DedicatedAllocator manages dedicated shard node assignment.
 type DedicatedAllocator struct {
 	mu          sync.Mutex
-	assignments map[string]string  // tenant ID → exclusive node ID
+	assignments map[string]string // tenant ID → exclusive node ID
 }
 
 // NewDedicatedAllocator creates a dedicated allocator.
@@ -181,16 +181,16 @@ func (da *DedicatedAllocator) Release(tenantID string) {
 // @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#3.7
 type ColdManager struct {
 	mu            sync.Mutex
-	coldTenants    map[string]*ColdState
-	closeSegment   func(segmentID string) error // mmap close callback
-	reopenSegment  func(segmentID string) error // mmap reopen callback
+	coldTenants   map[string]*ColdState
+	closeSegment  func(segmentID string) error // mmap close callback
+	reopenSegment func(segmentID string) error // mmap reopen callback
 }
 
 // ColdState tracks a paused tenant's state.
 type ColdState struct {
-	TenantID  string
-	PausedAt  time.Time
-	SegmentIDs []string  // segments that were unloaded
+	TenantID   string
+	PausedAt   time.Time
+	SegmentIDs []string // segments that were unloaded
 }
 
 // NewColdManager creates a cold manager.

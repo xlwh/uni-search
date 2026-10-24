@@ -160,10 +160,10 @@ func (rg *ResourceGroup) Usage() (storageUsed int64, vectorCount int64) {
 
 // Manager manages all tenant resource groups.
 type Manager struct {
-	mu       sync.RWMutex
-	groups   map[string]*ResourceGroup
+	mu           sync.RWMutex
+	groups       map[string]*ResourceGroup
 	refillTicker *time.Ticker
-	done     chan struct{}
+	done         chan struct{}
 }
 
 // NewManager creates a tenant manager. Starts a background goroutine
@@ -242,7 +242,7 @@ func (m *Manager) RefillAll() {
 
 // QuotaExceededError is the 429 error returned when a tenant exceeds quota.
 type QuotaExceededError struct {
-	TenantID string
+	TenantID  string
 	Dimension string
 }
 

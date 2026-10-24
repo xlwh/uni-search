@@ -22,9 +22,9 @@ import (
 // The quantized representation uses a random projection matrix and
 // binary sign quantization, achieving ~32× memory reduction.
 type RaBitQuantizer struct {
-	dim   int     // vector dimensionality
+	dim   int       // vector dimensionality
 	proj  []float32 // flattened random projection matrix (dim*nBits, contiguous)
-	nBits int     // number of projection bits (typically dim)
+	nBits int       // number of projection bits (typically dim)
 }
 
 // NewRaBitQuantizer creates a quantizer with the given dimension.

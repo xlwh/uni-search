@@ -51,8 +51,14 @@ func TestAdvancePhaseWithHooks(t *testing.T) {
 	sc.SetHooks(
 		func(id types.ShardID) error { freezeCalled = true; return nil },
 		func(id types.ShardID) (*roaring.Bitmap, error) { return roaring.New(), nil }, // getBitmap
-		func(id types.ShardID, segs []types.SegmentID, bm *roaring.Bitmap) error { createChildCalled++; return nil },
-		func(parent, child types.ShardID, cursor int64) (int64, error) { replayWALCalled++; return cursor + 100, nil },
+		func(id types.ShardID, segs []types.SegmentID, bm *roaring.Bitmap) error {
+			createChildCalled++
+			return nil
+		},
+		func(parent, child types.ShardID, cursor int64) (int64, error) {
+			replayWALCalled++
+			return cursor + 100, nil
+		},
 		func(id types.ShardID, gen uint64) error { switchCalled = true; return nil },
 		func(id types.ShardID) error { decommissionCalled = true; return nil },
 	)

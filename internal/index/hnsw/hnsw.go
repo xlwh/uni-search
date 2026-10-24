@@ -117,20 +117,20 @@ type Hit struct {
 // is the segment id of this graph (0 when single-segment / unknown);
 // it is informational and not used during graph-internal traversal.
 type Graph struct {
-	cfg        Config
-	n          int32
-	dims       int
-	neighbors  []int32
-	offsets    []int32
-	levels     []uint8
-	entry      int32
-	maxLevel   int8
-	vecs       []float32
-	sq         sqState // SQ8 quantization tier, nil until Quantize (§2.5)
-	rb         rbState // RaBitQ quantization tier, nil until EnableRaBitQ (§2.5)
-	pq         pqState // PQ quantization tier, nil until EnablePQ (§Phase 3)
-	segID      int32   // segment id of this graph; informational (§2.4.2)
-	crosslinks []int64 // peer segID<<32 | nodeID; populated by BuildCrosslinks (§2.4.2)
+	cfg         Config
+	n           int32
+	dims        int
+	neighbors   []int32
+	offsets     []int32
+	levels      []uint8
+	entry       int32
+	maxLevel    int8
+	vecs        []float32
+	sq          sqState      // SQ8 quantization tier, nil until Quantize (§2.5)
+	rb          rbState      // RaBitQ quantization tier, nil until EnableRaBitQ (§2.5)
+	pq          pqState      // PQ quantization tier, nil until EnablePQ (§Phase 3)
+	segID       int32        // segment id of this graph; informational (§2.4.2)
+	crosslinks  []int64      // peer segID<<32 | nodeID; populated by BuildCrosslinks (§2.4.2)
 	neighborsEF *efLevelData // Elias-Fano encoded level-0 neighbors (§Phase 5); nil = use raw
 }
 

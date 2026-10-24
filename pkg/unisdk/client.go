@@ -23,7 +23,7 @@ type Client struct {
 func NewClient(addr string) *Client {
 	return &Client{
 		baseURL: addr,
-		http: &http.Client{Timeout: 30 * time.Second},
+		http:    &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -38,8 +38,8 @@ type IndexResult struct {
 
 // SearchResult is the response from a search request.
 type SearchResult struct {
-	Took int             `json:"took"`
-	Hits SearchHits      `json:"hits"`
+	Took int        `json:"took"`
+	Hits SearchHits `json:"hits"`
 }
 
 type SearchHits struct {
@@ -52,7 +52,7 @@ type SearchHits struct {
 
 // BulkResult is the response from a bulk request.
 type BulkResult struct {
-	Errors bool             `json:"errors"`
+	Errors bool              `json:"errors"`
 	Items  []json.RawMessage `json:"items"`
 }
 

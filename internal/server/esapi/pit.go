@@ -17,10 +17,10 @@ import (
 // exceeded (default 10000).
 // @spec: ./archive/2026-10-20-m1-es-compat-ga/02_spec.md#2.2.4
 type PITManager struct {
-	mu        sync.Mutex
-	pits      map[string]*pitEntry
-	ttl       time.Duration
-	maxPITs   int
+	mu      sync.Mutex
+	pits    map[string]*pitEntry
+	ttl     time.Duration
+	maxPITs int
 }
 
 type pitEntry struct {

@@ -138,12 +138,12 @@ func (s *AdminServer) handleTenantByID(w http.ResponseWriter, r *http.Request) {
 
 // dashboardData is the aggregated response for GET /api/dashboard.
 type dashboardData struct {
-	Health       *esapi.ClusterHealth `json:"health"`
-	Indices      []esapi.IndexInfo    `json:"indices"`
-	IndexCount   int                  `json:"index_count"`
-	DocCount     int64                `json:"doc_count"`
-	StoreSize    string               `json:"store_size"`
-	TenantCount  int                  `json:"tenant_count"`
+	Health      *esapi.ClusterHealth `json:"health"`
+	Indices     []esapi.IndexInfo    `json:"indices"`
+	IndexCount  int                  `json:"index_count"`
+	DocCount    int64                `json:"doc_count"`
+	StoreSize   string               `json:"store_size"`
+	TenantCount int                  `json:"tenant_count"`
 }
 
 func (s *AdminServer) serveDashboard(w http.ResponseWriter, r *http.Request) {

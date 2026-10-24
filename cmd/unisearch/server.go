@@ -20,8 +20,8 @@ import (
 	"github.com/unisearch-db/unisearch/internal/embedded"
 	"github.com/unisearch-db/unisearch/internal/observability"
 	"github.com/unisearch-db/unisearch/internal/server/admin"
-	grpcsrv "github.com/unisearch-db/unisearch/internal/server/grpc"
 	"github.com/unisearch-db/unisearch/internal/server/esapi"
+	grpcsrv "github.com/unisearch-db/unisearch/internal/server/grpc"
 	"github.com/unisearch-db/unisearch/internal/tenant"
 	"google.golang.org/grpc"
 )

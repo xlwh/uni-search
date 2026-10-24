@@ -3,7 +3,7 @@
 // index which stores integer TF, the sparse vector index stores float
 // weights per dimension, enabling dot-product scoring with WAND pruning.
 //
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.1
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.1
 package inverted
 
 import (
@@ -29,10 +29,10 @@ const (
 // float weights. Unlike the text PostingList which uses uint8 TF, this
 // stores float32 weights for dot-product scoring.
 type WeightedPostingList struct {
-	termID    uint64        // dimension ID (from FST dict)
-	docIDs    []int32       // ordered row IDs
-	weights   []float32     // per-doc weights (parallel to docIDs)
-	maxWeight float32       // maximum weight in this dimension (for WAND upper bound)
+	termID    uint64    // dimension ID (from FST dict)
+	docIDs    []int32   // ordered row IDs
+	weights   []float32 // per-doc weights (parallel to docIDs)
+	maxWeight float32   // maximum weight in this dimension (for WAND upper bound)
 	precision WeightPrecision
 }
 
@@ -40,12 +40,12 @@ type WeightedPostingList struct {
 // It maps dimension IDs to WeightedPostingLists, enabling WAND-pruned
 // dot-product search for SPLADE/BGE-M3 sparse vectors.
 type SparseInvertedIndex struct {
-	mu       sync.RWMutex
-	dict     *TermDict               // reused FST term dictionary
-	postings map[TermID]*WeightedPostingList
-	numDocs  int32
+	mu        sync.RWMutex
+	dict      *TermDict // reused FST term dictionary
+	postings  map[TermID]*WeightedPostingList
+	numDocs   int32
 	precision WeightPrecision
-	field    string
+	field     string
 }
 
 // NewSparseInvertedIndex creates a new sparse vector inverted index.
@@ -115,13 +115,13 @@ type SparseWANDScorer struct {
 }
 
 type sparseWANDTerm struct {
-	dimID      uint64
+	dimID       uint64
 	queryWeight float32
-	pl         *WeightedPostingList
-	upperBound float32
-	idx        int           // current position in pl.docIDs
-	currentDoc int32
-	done       bool
+	pl          *WeightedPostingList
+	upperBound  float32
+	idx         int // current position in pl.docIDs
+	currentDoc  int32
+	done        bool
 }
 
 // NewSparseWANDScorer creates a WAND scorer for sparse vector search.
@@ -303,10 +303,10 @@ type sparseCand struct {
 	docID int32
 }
 
-func (h sparseHeap) Len() int            { return len(h) }
-func (h sparseHeap) Less(i, j int) bool  { return h[i].score < h[j].score }
-func (h sparseHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
-func (h *sparseHeap) Push(x any)         { *h = append(*h, x.(sparseCand)) }
+func (h sparseHeap) Len() int           { return len(h) }
+func (h sparseHeap) Less(i, j int) bool { return h[i].score < h[j].score }
+func (h sparseHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *sparseHeap) Push(x any)        { *h = append(*h, x.(sparseCand)) }
 func (h *sparseHeap) Pop() any {
 	old := *h
 	n := len(old)

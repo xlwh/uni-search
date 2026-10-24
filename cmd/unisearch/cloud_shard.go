@@ -17,8 +17,8 @@ import (
 	"github.com/unisearch-db/unisearch/internal/cloud"
 	"github.com/unisearch-db/unisearch/internal/config"
 	"github.com/unisearch-db/unisearch/internal/embedded"
-	"github.com/unisearch-db/unisearch/internal/observability"
 	"github.com/unisearch-db/unisearch/internal/objstore"
+	"github.com/unisearch-db/unisearch/internal/observability"
 	grpcsrv "github.com/unisearch-db/unisearch/internal/server/grpc"
 	"google.golang.org/grpc"
 )
@@ -114,8 +114,8 @@ func runShard(cfg *config.Config) error {
 	httpMux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"name":   cfg.Cloud.NodeID,
-			"role":   "shard",
+			"name":    cfg.Cloud.NodeID,
+			"role":    "shard",
 			"tagline": "You Know, for Search",
 		})
 	})

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.4
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.4
 
 func TestF16ToF32_Basic(t *testing.T) {
 	// 1.0 in f16: sign=0, exp=15, mant=0

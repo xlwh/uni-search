@@ -3,7 +3,7 @@
 // memory footprint of dense_vector fields with minimal precision loss
 // (<1% recall@k in typical ANN workloads).
 //
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.4
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.4
 package types
 
 import "math"

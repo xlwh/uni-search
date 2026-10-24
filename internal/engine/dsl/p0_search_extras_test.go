@@ -9,7 +9,7 @@ import (
 
 // TestP0_SearchExtras_RescoreParse verifies that rescore JSON is captured
 // in SearchExtras.Rescore.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.1
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.1
 func TestP0_SearchExtras_RescoreParse(t *testing.T) {
 	body := `{"query": {"match": {"title": "hello"}}, "rescore": [{"query": {"match": {"title": "uni"}}, "window_size": 10, "query_weight": 0.3, "rescore_query_weight": 0.7}]}`
 	_, _, _, extras, err := ParseSearchBodyFull([]byte(body))
@@ -21,7 +21,7 @@ func TestP0_SearchExtras_RescoreParse(t *testing.T) {
 
 // TestP0_SearchExtras_CollapseParse verifies that collapse JSON is captured
 // in SearchExtras.Collapse.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.2
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.2
 func TestP0_SearchExtras_CollapseParse(t *testing.T) {
 	body := `{"query": {"match": {"title": "hello"}}, "collapse": {"field": "category"}}`
 	_, _, _, extras, err := ParseSearchBodyFull([]byte(body))
@@ -41,7 +41,7 @@ func TestP0_SearchExtras_CollapseWithInnerHits(t *testing.T) {
 
 // TestP0_SearchExtras_PostFilterParse verifies that post_filter JSON is
 // captured in SearchExtras.PostFilter.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.3
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.3
 func TestP0_SearchExtras_PostFilterParse(t *testing.T) {
 	body := `{"query": {"match": {"title": "hello"}}, "post_filter": {"term": {"status": "active"}}}`
 	_, _, _, extras, err := ParseSearchBodyFull([]byte(body))

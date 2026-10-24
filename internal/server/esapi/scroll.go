@@ -26,12 +26,12 @@ func NewScrollManager(pitMgr *PITManager) *ScrollManager {
 
 // scrollCursor is the internal state encoded in scroll_id.
 type scrollCursor struct {
-	PITID      string      `json:"pit_id"`
-	SortValues []any       `json:"sort_values"`
-	From       int         `json:"from"`
-	Body       []byte      `json:"body,omitempty"` // original search body for replay
-	Index      string      `json:"index,omitempty"`
-	Size       int         `json:"size,omitempty"`
+	PITID      string `json:"pit_id"`
+	SortValues []any  `json:"sort_values"`
+	From       int    `json:"from"`
+	Body       []byte `json:"body,omitempty"` // original search body for replay
+	Index      string `json:"index,omitempty"`
+	Size       int    `json:"size,omitempty"`
 }
 
 // CreateScroll creates a PIT for the scroll session and returns a

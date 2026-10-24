@@ -21,9 +21,9 @@ type mockSegment struct {
 	vectors [][]float32
 }
 
-func (m *mockSegment) ID() types.SegmentID { return m.id }
-func (m *mockSegment) NumRows() int         { return m.numRows }
-func (m *mockSegment) Serialize() []byte   { return m.data }
+func (m *mockSegment) ID() types.SegmentID     { return m.id }
+func (m *mockSegment) NumRows() int            { return m.numRows }
+func (m *mockSegment) Serialize() []byte       { return m.data }
 func (m *mockSegment) GetVectors() [][]float32 { return m.vectors }
 
 func TestClassify(t *testing.T) {

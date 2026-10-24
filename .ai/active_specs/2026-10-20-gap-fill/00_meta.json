@@ -1,9 +1,9 @@
 {
   "name": "2026-10-20-gap-fill",
-  "status": "planned",
+  "status": "in_progress",
   "created_at": "2026-10-20T11:25:55.275691+00:00",
-  "updated_at": "2026-10-20T11:40:24.881250+00:00",
-  "description": "补齐设计文档 vs 代码审计的 9 个缺口：Prometheus metrics、OTel tracing、CI/CD、gRPC 服务、K8s Operator reconciler、Online split 迁移、Cross-Link 合并、冷热分层迁移、goccy/json 加速",
+  "updated_at": "2026-10-24T12:00:00.000000",
+  "description": "补齐设计文档 vs 代码审计的 9 个缺口。2026-10-24 复审：G1 Prometheus / G2 OTel / G3 CI-CD / G4 gRPC / G5 K8s Operator reconciler / G9 goccy-json 已由后续规格实现并接线；剩余 G6 Online split（状态机真实，数据路径 hooks 未接线）、G7 Cross-Link 增量合并（核心合并仍是桩）、G8 冷热分层迁移（量化与上传真实，写回/回收缺失）为未完成项",
   "tags": [
     "feature",
     "gap-fill",
@@ -25,6 +25,12 @@
       "from": "proposed",
       "to": "planned",
       "timestamp": "2026-10-20T19:40:24.881235",
+      "forced": true
+    },
+    {
+      "from": "planned",
+      "to": "in_progress",
+      "timestamp": "2026-10-24T12:00:00.000000",
       "forced": true
     }
   ]

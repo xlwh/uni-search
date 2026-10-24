@@ -9,7 +9,7 @@ import (
 	"github.com/unisearch-db/unisearch/internal/jsonx"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
 
 func (s *Server) handlePutPipeline(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
@@ -23,8 +23,8 @@ func (s *Server) handlePutPipeline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Description string              `json:"description"`
-		Processors  []map[string]any    `json:"processors"`
+		Description string           `json:"description"`
+		Processors  []map[string]any `json:"processors"`
 	}
 	if err := jsonx.Unmarshal(body, &req); err != nil {
 		writeError(w, apierr.NewIllegalArgument("invalid JSON: "+err.Error()))
@@ -47,7 +47,7 @@ func (s *Server) handlePutPipeline(w http.ResponseWriter, r *http.Request) {
 			break // only one key per processor
 		}
 		if typeName == "" {
-			writeError(w, apierr.NewIllegalArgument("processor[" + itoa(i) + "] missing type"))
+			writeError(w, apierr.NewIllegalArgument("processor["+itoa(i)+"] missing type"))
 			return
 		}
 		proc, perr := ingest.NewProcessor(typeName, config)
@@ -131,16 +131,21 @@ func (s *Server) handleSimulatePipeline(w http.ResponseWriter, r *http.Request) 
 }
 
 func itoa(i int) string {
-	if i == 0 { return "0" }
+	if i == 0 {
+		return "0"
+	}
 	var b []byte
-	for i > 0 { b = append([]byte{byte('0' + i%10)}, b...); i /= 10 }
+	for i > 0 {
+		b = append([]byte{byte('0' + i%10)}, b...)
+		i /= 10
+	}
 	return string(b)
 }
 
 // applyPipeline executes the named ingest pipeline on the document,
 // modifying its Source in-place. Called by write handlers before
 // dispatching to Engine.Write.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
 func (s *Server) applyPipeline(doc *IndexDoc) error {
 	if doc.Pipeline == "" || doc.Op == OpDelete {
 		return nil

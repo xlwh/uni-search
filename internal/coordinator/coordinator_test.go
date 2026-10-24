@@ -150,13 +150,13 @@ func TestQueryCoordinator_MultiIndexMerge(t *testing.T) {
 	c.RegisterShardClient("a1", &mockShardClient{
 		result: &ShardSearchResult{
 			Total: 1,
-			Hits: []ShardHit{{ID: "a1", Score: 0.5}},
+			Hits:  []ShardHit{{ID: "a1", Score: 0.5}},
 		},
 	})
 	c.RegisterShardClient("a2", &mockShardClient{
 		result: &ShardSearchResult{
 			Total: 1,
-			Hits: []ShardHit{{ID: "b1", Score: 0.7}},
+			Hits:  []ShardHit{{ID: "b1", Score: 0.7}},
 		},
 	})
 

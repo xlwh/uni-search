@@ -464,14 +464,14 @@ var (
 // RescoreOp re-scores the top (window) hits from the input pipeline.
 // Hits outside the window keep their original score.
 type RescoreOp struct {
-	input           Operator
-	rescoreQuery    func(rowID int32, source []byte) float32
-	queryWeight     float32
-	rescoreWeight   float32
-	window          int  // number of top hits to rescore
-	out             *ColumnBatch
-	done            bool
-	collected       []topNCand // collected hits from input
+	input         Operator
+	rescoreQuery  func(rowID int32, source []byte) float32
+	queryWeight   float32
+	rescoreWeight float32
+	window        int // number of top hits to rescore
+	out           *ColumnBatch
+	done          bool
+	collected     []topNCand // collected hits from input
 }
 
 // NewRescore constructs a RescoreOp. window is the number of top hits
@@ -564,11 +564,11 @@ func (r *RescoreOp) Close() {
 
 // CollapseOp collapses hits by a group key, keeping the top hit per group.
 type CollapseOp struct {
-	input      Operator
-	groupKey   func(rowID int32) string // extracts the group key for a hit
+	input       Operator
+	groupKey    func(rowID int32) string // extracts the group key for a hit
 	maxPerGroup int                      // max hits per group (1 = collapse)
-	out        *ColumnBatch
-	done       bool
+	out         *ColumnBatch
+	done        bool
 }
 
 // NewCollapse constructs a CollapseOp. maxPerGroup is the maximum hits
@@ -784,7 +784,7 @@ func (h mergeSortHeap) Less(i, j int) bool {
 	return h[i].docID < h[j].docID
 }
 func (h mergeSortHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
-func (h *mergeSortHeap) Push(x any) { *h = append(*h, x.(mergeHeapItem)) }
+func (h *mergeSortHeap) Push(x any)   { *h = append(*h, x.(mergeHeapItem)) }
 func (h *mergeSortHeap) Pop() any {
 	old := *h
 	n := len(old)

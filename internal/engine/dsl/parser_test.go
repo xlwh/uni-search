@@ -488,7 +488,8 @@ func TestR14_FromSizePassthrough(t *testing.T) {
 func TestR14_UnsupportedQueries(t *testing.T) {
 	for _, name := range []string{
 		"bogus",
-	} {		t.Run(name, func(t *testing.T) {
+	} {
+		t.Run(name, func(t *testing.T) {
 			body := fmt.Sprintf(`{"query": {%q: {"field": "f"}}}`, name)
 			q, err := ParseQuery([]byte(body))
 			require.Error(t, err)

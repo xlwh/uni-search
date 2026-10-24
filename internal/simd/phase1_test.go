@@ -101,9 +101,9 @@ func TestHammingDistanceBatch_LargeBitmask(t *testing.T) {
 	}
 	// 4 candidates, 2 identical to query, 2 random
 	codesFlat := make([]byte, 4*nBytes)
-	copy(codesFlat[0:nBytes], qBits)       // cand 0: identical
-	randFill(rng, codesFlat[nBytes:2*nBytes]) // cand 1: random
-	copy(codesFlat[2*nBytes:3*nBytes], qBits)  // cand 2: identical
+	copy(codesFlat[0:nBytes], qBits)            // cand 0: identical
+	randFill(rng, codesFlat[nBytes:2*nBytes])   // cand 1: random
+	copy(codesFlat[2*nBytes:3*nBytes], qBits)   // cand 2: identical
 	randFill(rng, codesFlat[3*nBytes:4*nBytes]) // cand 3: random
 
 	codeOffsets := []int32{0, int32(nBytes), int32(2 * nBytes), int32(3 * nBytes)}

@@ -14,8 +14,8 @@ import (
 // CompatReport is the output of an es-compat scan.
 type CompatReport struct {
 	IndexName     string
-	MappingScore  float64   // 0-1 compatibility score
-	QueryCoverage float64   // 0-1 query compatibility
+	MappingScore  float64 // 0-1 compatibility score
+	QueryCoverage float64 // 0-1 query compatibility
 	Issues        []CompatIssue
 	Suggestions   []string
 }
@@ -23,9 +23,9 @@ type CompatReport struct {
 // CompatIssue is one compatibility problem found during scanning.
 type CompatIssue struct {
 	Field    string
-	Type     string   // "unsupported_type" | "unsupported_query" | "mapping_conflict"
+	Type     string // "unsupported_type" | "unsupported_query" | "mapping_conflict"
 	Detail   string
-	Severity string   // "error" | "warning" | "info"
+	Severity string // "error" | "warning" | "info"
 }
 
 // ScanMapping analyzes an ES mapping JSON and returns a compatibility report.
@@ -55,9 +55,9 @@ func ScanMapping(indexName string, mappingJSON []byte) (*CompatReport, error) {
 		"ip": true, "geo_point": true, "object": true,
 	}
 	unsupportedTypes := map[string]string{
-		"nested":      "use object type or flatten manually",
-		"geo_shape":   "supported in M3 (W7.3)",
-		"sparse_vector": "supported in M1",
+		"nested":             "use object type or flatten manually",
+		"geo_shape":          "supported in M3 (W7.3)",
+		"sparse_vector":      "supported in M1",
 		"search_as_you_type": "use text + completion suggester",
 	}
 
@@ -77,13 +77,13 @@ func ScanMapping(indexName string, mappingJSON []byte) (*CompatReport, error) {
 			}
 			report.Issues = append(report.Issues, CompatIssue{
 				Field: field, Type: "unsupported_type",
-				Detail: fmt.Sprintf("type %q: %s", fieldType, suggestion),
+				Detail:   fmt.Sprintf("type %q: %s", fieldType, suggestion),
 				Severity: severity,
 			})
 		} else if fieldType != "" {
 			report.Issues = append(report.Issues, CompatIssue{
 				Field: field, Type: "unsupported_type",
-				Detail: fmt.Sprintf("unknown type %q", fieldType),
+				Detail:   fmt.Sprintf("unknown type %q", fieldType),
 				Severity: "warning",
 			})
 		}
@@ -131,8 +131,8 @@ func ScanQueries(queryLogs []string) (float64, []CompatIssue) {
 						supported++
 					} else {
 						issues = append(issues, CompatIssue{
-							Type: "unsupported_query",
-							Detail: fmt.Sprintf("query type %q not supported", qType),
+							Type:     "unsupported_query",
+							Detail:   fmt.Sprintf("query type %q not supported", qType),
 							Severity: "warning",
 						})
 					}

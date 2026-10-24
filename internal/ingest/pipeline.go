@@ -1,5 +1,5 @@
 // Package ingest provides pipeline-based document preprocessing.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
 package ingest
 
 import "fmt"
@@ -137,7 +137,9 @@ func NewProcessor(typeName string, config map[string]any) (Processor, error) {
 		var patterns []string
 		if raw, ok := config["patterns"].([]any); ok {
 			for _, p := range raw {
-				if s, ok := p.(string); ok { patterns = append(patterns, s) }
+				if s, ok := p.(string); ok {
+					patterns = append(patterns, s)
+				}
 			}
 		}
 		target, _ := config["target_field"].(string)
@@ -153,7 +155,9 @@ func NewProcessor(typeName string, config map[string]any) (Processor, error) {
 		var formats []string
 		if raw, ok := config["formats"].([]any); ok {
 			for _, f := range raw {
-				if s, ok := f.(string); ok { formats = append(formats, s) }
+				if s, ok := f.(string); ok {
+					formats = append(formats, s)
+				}
 			}
 		}
 		return &DateProcessor{Field: field, Formats: formats, TargetField: target, TimeZone: tz}, nil

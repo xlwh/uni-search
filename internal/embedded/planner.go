@@ -996,7 +996,7 @@ func searchMemtableByHybrid(q *dsl.HybridQuery, idx *indexState, snap types.Snap
 
 // ---------------------------------------------------------------------------
 // P0 DSL memtable search functions (es-feature-gap-fill)
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2
 // ---------------------------------------------------------------------------
 
 // searchMemtableByConstantScore wraps the inner filter query in a constant
@@ -1132,7 +1132,7 @@ func searchMemtableByRegexp(q *dsl.RegexpQuery, idx *indexState, snap types.Snap
 
 // ---------------------------------------------------------------------------
 // P1 DSL memtable search functions (es-feature-gap-fill)
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.6-2.9
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.6-2.9
 // ---------------------------------------------------------------------------
 
 func searchMemtableByFunctionScore(q *dsl.FunctionScoreQuery, idx *indexState, snap types.Snapshot) []scoredHit {
@@ -1241,7 +1241,7 @@ func haversineMeters(lat1, lon1, lat2, lon2 float64) float64 {
 
 // ---------------------------------------------------------------------------
 // P2 DSL memtable search functions (es-feature-gap-fill)
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.10-2.13
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.10-2.13
 // ---------------------------------------------------------------------------
 
 func searchMemtableByMoreLikeThis(q *dsl.MoreLikeThisQuery, idx *indexState, snap types.Snapshot) []scoredHit {

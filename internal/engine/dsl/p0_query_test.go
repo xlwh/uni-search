@@ -10,7 +10,7 @@ import (
 )
 
 // TestP0_PrefixQueryParse tests prefix query parsing in both short and long form.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.1
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.1
 func TestP0_PrefixQueryParse(t *testing.T) {
 	// Short form.
 	t.Run("short form", func(t *testing.T) {
@@ -48,7 +48,7 @@ func TestP0_PrefixQueryParse(t *testing.T) {
 }
 
 // TestP0_RegexpQueryParse tests regexp query parsing.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.2
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.2
 func TestP0_RegexpQueryParse(t *testing.T) {
 	// Short form.
 	t.Run("short form", func(t *testing.T) {
@@ -84,7 +84,7 @@ func TestP0_RegexpQueryParse(t *testing.T) {
 }
 
 // TestP0_ConstantScoreQueryParse tests constant_score query parsing.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.3
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.3
 func TestP0_ConstantScoreQueryParse(t *testing.T) {
 	t.Run("with filter and default boost", func(t *testing.T) {
 		body := `{"query": {"constant_score": {"filter": {"term": {"status": "active"}}}}}`
@@ -117,7 +117,7 @@ func TestP0_ConstantScoreQueryParse(t *testing.T) {
 }
 
 // TestP0_BoostingQueryParse tests boosting query parsing.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.4
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.4
 func TestP0_BoostingQueryParse(t *testing.T) {
 	t.Run("positive and negative", func(t *testing.T) {
 		body := `{"query": {"boosting": {"positive": {"match": {"title": "hello"}}, "negative": {"term": {"status": "inactive"}}, "negative_boost": 0.5}}}`
@@ -143,7 +143,7 @@ func TestP0_BoostingQueryParse(t *testing.T) {
 }
 
 // TestP0_DisMaxQueryParse tests dis_max query parsing.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.5
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.5
 func TestP0_DisMaxQueryParse(t *testing.T) {
 	t.Run("multiple queries with tie_breaker", func(t *testing.T) {
 		body := `{"query": {"dis_max": {"queries": [{"match": {"title": "hello"}}, {"match": {"content": "world"}}], "tie_breaker": 0.3, "boost": 1.5}}}`

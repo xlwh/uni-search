@@ -281,7 +281,7 @@ func (ix *Index) Quantize(ctx context.Context, to index.QuantLevel) error {
 // MergeSource describes one source segment's contribution to a merge with
 // deletion awareness. @spec: 02_spec.md#2.3
 type MergeSource struct {
-	Store   *invertedStore // loaded source index
+	Store   *invertedStore  // loaded source index
 	Deletes *roaring.Bitmap // delete bitmap (nil = no deletes)
 	// RowMap[oldDocID] = newDocID for surviving rows. Length = source NumRows.
 	// Deleted rows have arbitrary values (they are filtered before lookup).

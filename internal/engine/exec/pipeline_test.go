@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.5
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.5
 
 // mockOperator emits a fixed set of scored docs then EOF.
 type mockOperator struct {
@@ -127,7 +127,7 @@ func TestPipeline_ParallelExecution(t *testing.T) {
 	paths := make([]Operator, 5)
 	for i := range paths {
 		paths[i] = &mockOperator{docs: []ScoredDoc{
-			{DocID: uint64(i + 1), Score: float32(5-i)},
+			{DocID: uint64(i + 1), Score: float32(5 - i)},
 		}}
 	}
 

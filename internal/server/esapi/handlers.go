@@ -49,15 +49,15 @@ func (s *Server) handleCatHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	row := map[string]any{
-		"status":            h.Status,
-		"cluster":           "unisearch",
-		"cluster_name":      h.ClusterName,
-		"node":              strconv.Itoa(h.NumberOfNodes),
-		"data_node":          strconv.Itoa(h.NumberOfDataNodes),
-		"pri":               strconv.Itoa(h.ActivePrimaryShards),
-		"relo":              strconv.Itoa(h.RelocatingShards),
-		"init":              strconv.Itoa(h.InitializingShards),
-		"unassign":          strconv.Itoa(h.UnassignedShards),
+		"status":       h.Status,
+		"cluster":      "unisearch",
+		"cluster_name": h.ClusterName,
+		"node":         strconv.Itoa(h.NumberOfNodes),
+		"data_node":    strconv.Itoa(h.NumberOfDataNodes),
+		"pri":          strconv.Itoa(h.ActivePrimaryShards),
+		"relo":         strconv.Itoa(h.RelocatingShards),
+		"init":         strconv.Itoa(h.InitializingShards),
+		"unassign":     strconv.Itoa(h.UnassignedShards),
 	}
 	// Return JSON when Accept header or ?format=json is specified.
 	// @spec: ./archive/2026-10-21-deep-gap-remediation/02_spec.md#cat

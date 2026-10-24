@@ -31,8 +31,8 @@ func runMeta(cfg *config.Config) error {
 
 	// --- Step 1: Initialize Raft cluster ---
 	raftCfg := raft.RaftClusterConfig{
-		NodeID:  cfg.Cloud.NodeID,
-		DataDir: cfg.Data.Dir,
+		NodeID:   cfg.Cloud.NodeID,
+		DataDir:  cfg.Data.Dir,
 		RaftAddr: cfg.Cloud.RaftAddr,
 		Peers:    cfg.Cloud.RaftPeers,
 	}

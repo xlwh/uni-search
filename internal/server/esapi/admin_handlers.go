@@ -6,7 +6,7 @@ import (
 	apierr "github.com/unisearch-db/unisearch/internal/errors"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.4
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.4
 
 // handleOpenIndex handles POST /{index}/_open.
 func (s *Server) handleOpenIndex(w http.ResponseWriter, r *http.Request) {
@@ -73,8 +73,8 @@ func (s *Server) handleIndexStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, 0, map[string]any{
-		"_shards":  map[string]any{"total": 1, "successful": 1, "failed": 0},
-		"indices":  indicesStats,
+		"_shards": map[string]any{"total": 1, "successful": 1, "failed": 0},
+		"indices": indicesStats,
 	})
 }
 
@@ -97,7 +97,7 @@ func (s *Server) handleSegments(w http.ResponseWriter, r *http.Request) {
 		shards := make(map[string]any)
 		segments := make(map[string]any)
 		segments["0"] = map[string]any{
-			"generation":   0,
+			"generation":    0,
 			"num_docs":      ii.DocsCount,
 			"deleted_docs":  ii.DocsDeleted,
 			"size_in_bytes": ii.StoreSize,
@@ -119,7 +119,7 @@ func (s *Server) handleSegments(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleResolveIndex handles GET /_resolve/index/{name}.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.4.5
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.4.5
 func (s *Server) handleResolveIndex(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
@@ -143,23 +143,23 @@ func (s *Server) handleResolveIndex(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, 0, map[string]any{
-		"indices":     idxNames,
-		"aliases":     aliasResult,
+		"indices":      idxNames,
+		"aliases":      aliasResult,
 		"data_streams": []string{},
 	})
 }
 
 // handleReloadSearchAnalyzers handles POST /{index}/_reload_search_analyzers.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.4.6
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.4.6
 func (s *Server) handleReloadSearchAnalyzers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 0, map[string]any{
-		"_shards":               map[string]any{"total": 1, "successful": 1, "failed": 0},
+		"_shards":                   map[string]any{"total": 1, "successful": 1, "failed": 0},
 		"reloaded_search_analyzers": true,
 	})
 }
 
 // handleShrinkIndex handles POST /{index}/_shrink/{target}.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.4.7
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.4.7
 func (s *Server) handleShrinkIndex(w http.ResponseWriter, r *http.Request) {
 	source := r.PathValue("index")
 	target := r.PathValue("target")
@@ -169,9 +169,9 @@ func (s *Server) handleShrinkIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	// P2: acknowledge shrink (embedded single-shard mode: no-op).
 	writeJSON(w, 0, map[string]any{
-		"acknowledged":         true,
-		"shards_acknowledged":  true,
-		"index":                target,
+		"acknowledged":        true,
+		"shards_acknowledged": true,
+		"index":               target,
 	})
 }
 

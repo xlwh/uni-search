@@ -32,9 +32,9 @@ func (s *Server) handleCreatePIT(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = keepAlive // PIT manager handles TTL internally
 	writeJSON(w, http.StatusOK, map[string]any{
-		"id":         pitID,
-		"pit_id":     pitID,
-		"_shards":    map[string]any{"total": 1, "successful": 1, "skipped": 0},
+		"id":      pitID,
+		"pit_id":  pitID,
+		"_shards": map[string]any{"total": 1, "successful": 1, "skipped": 0},
 	})
 }
 
@@ -155,9 +155,9 @@ func (s *Server) handleScroll(w http.ResponseWriter, r *http.Request) {
 		"timed_out":  res.TimedOut,
 		"_shards":    map[string]any{"total": res.Shards.Total, "successful": res.Shards.Successful, "skipped": res.Shards.Skipped, "failed": res.Shards.Failed},
 		"hits": map[string]any{
-			"total":      map[string]any{"value": res.Total, "relation": res.Relation},
-			"max_score":  res.MaxScore,
-			"hits":       reshapeHits(res.Hits),
+			"total":     map[string]any{"value": res.Total, "relation": res.Relation},
+			"max_score": res.MaxScore,
+			"hits":      reshapeHits(res.Hits),
 		},
 	})
 }

@@ -22,7 +22,7 @@ type ShardRaftGroup struct {
 	shardID types.ShardID
 	shard   *Shard
 	leader  bool
-	peers   []string  // peer addresses
+	peers   []string // peer addresses
 	closed  bool
 }
 
@@ -31,7 +31,7 @@ func NewShardRaftGroup(shardID types.ShardID, shard *Shard, peers []string) *Sha
 	return &ShardRaftGroup{
 		shardID: shardID,
 		shard:   shard,
-		leader:  true,  // bootstrap as leader
+		leader:  true, // bootstrap as leader
 		peers:   peers,
 	}
 }

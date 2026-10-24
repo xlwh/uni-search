@@ -1,5 +1,5 @@
 // Package snapshot provides ES-style snapshot repository management.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.6
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.6
 package snapshot
 
 import (
@@ -24,7 +24,7 @@ type SnapshotInfo struct {
 
 // VerifyRepo checks that the repository is writable and returns the
 // verification result.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.6.3
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.6.3
 func (r *RepoRegistry) VerifyRepo(repoName string) error {
 	r.mu.RLock()
 	cfg, ok := r.repos[repoName]
@@ -49,7 +49,7 @@ func (r *RepoRegistry) VerifyRepo(repoName string) error {
 }
 
 // GetSnapshot returns info for one specific snapshot.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.6.2
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.6.2
 func (r *RepoRegistry) GetSnapshot(repoName, snapshotName string) (*SnapshotInfo, error) {
 	r.mu.RLock()
 	cfg, ok := r.repos[repoName]
@@ -78,8 +78,8 @@ type RepoConfig struct {
 
 // RepoRegistry manages snapshot repositories.
 type RepoRegistry struct {
-	mu    sync.RWMutex
-	repos map[string]*RepoConfig
+	mu      sync.RWMutex
+	repos   map[string]*RepoConfig
 	dataDir string
 }
 

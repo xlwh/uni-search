@@ -35,7 +35,7 @@ type QueryStringQuery struct {
 type FuzzyQuery struct {
 	Field     string
 	Value     string
-	Fuzziness  string // "AUTO", "0".."2"
+	Fuzziness string // "AUTO", "0".."2"
 	Boost     float64
 }
 
@@ -166,7 +166,7 @@ type RankSpec struct {
 // PrefixQuery matches documents containing terms that start with the given
 // prefix value. For text fields it expands via the FST; for keyword fields
 // it does a prefix scan.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.1
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.1
 type PrefixQuery struct {
 	Field string
 	Value string
@@ -176,7 +176,7 @@ type PrefixQuery struct {
 // RegexpQuery matches documents containing terms that match the given
 // regular expression pattern. The pattern is matched against dictionary
 // terms using Go's regexp engine.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.2
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.2
 type RegexpQuery struct {
 	Field   string
 	Pattern string
@@ -186,7 +186,7 @@ type RegexpQuery struct {
 
 // ConstantScoreQuery wraps an inner query in a filter context: matching
 // documents receive a constant score equal to Boost (default 1.0).
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.3
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.3
 type ConstantScoreQuery struct {
 	Filter Query
 	Boost  float64
@@ -195,7 +195,7 @@ type ConstantScoreQuery struct {
 // BoostingQuery returns documents matching the positive query while
 // down-scoring documents that also match the negative query by
 // multiplying with NegativeBoost.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.4
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.4
 type BoostingQuery struct {
 	Positive      Query
 	Negative      Query
@@ -204,7 +204,7 @@ type BoostingQuery struct {
 
 // DisMaxQuery returns the maximum score among all sub-queries, plus
 // TieBreaker times the scores of the remaining sub-queries.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.5
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.2.5
 type DisMaxQuery struct {
 	Queries    []Query
 	TieBreaker float64
@@ -212,46 +212,46 @@ type DisMaxQuery struct {
 }
 
 // MoreLikeThisQuery finds documents similar to the given text/documents.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.10
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.10
 type MoreLikeThisQuery struct {
-	Fields      []string
-	LikeTexts   []string
-	UnlikeTexts []string
-	MinTermFreq int
+	Fields        []string
+	LikeTexts     []string
+	UnlikeTexts   []string
+	MinTermFreq   int
 	MaxQueryTerms int
-	MinDocFreq  int
-	Boost       float64
+	MinDocFreq    int
+	Boost         float64
 }
 
 // SimpleQueryStringQuery parses a simplified query string with +/-/|/*/?/"" syntax.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.11
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.11
 type SimpleQueryStringQuery struct {
-	Query   string
-	Fields  []string
-	Boost   float64
+	Query           string
+	Fields          []string
+	Boost           float64
 	DefaultOperator string // "and" | "or"
 }
 
 // CombinedFieldsQuery matches across multiple fields with combined BM25.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.12
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.12
 type CombinedFieldsQuery struct {
-	Fields  []string
-	Query   string
-	Boost   float64
+	Fields   []string
+	Query    string
+	Boost    float64
 	Operator string
 }
 
 // MatchBoolPrefixQuery analyzes text and builds bool.should of terms + prefix.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.13
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.13
 type MatchBoolPrefixQuery struct {
-	Field    string
-	Query    string
-	Boost    float64
+	Field string
+	Query string
+	Boost float64
 }
 
 // DistanceFeatureQuery scores documents based on the distance between
 // a field value and an origin. Formula: boost * pivot / (pivot + distance).
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.14
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.14
 type DistanceFeatureQuery struct {
 	Field  string
 	Origin any
@@ -261,7 +261,7 @@ type DistanceFeatureQuery struct {
 
 // RankFeatureQuery scores documents based on a rank_feature field value.
 // Formula: boost * log(1 + positive / (field_value + negative)).
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.15
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.15
 type RankFeatureQuery struct {
 	Field    string
 	Positive float64
@@ -270,7 +270,7 @@ type RankFeatureQuery struct {
 }
 
 // WrapperQuery decodes a base64-encoded query and parses it.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.16
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.16
 type WrapperQuery struct {
 	Query string // base64-encoded JSON query
 	Inner Query  // decoded query
@@ -278,11 +278,11 @@ type WrapperQuery struct {
 
 // PinnedQuery promotes specific documents to the top of the results,
 // followed by the organic query results.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.17
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.17
 type PinnedQuery struct {
-	Organic     Query
-	Pinned      []PinnedDoc
-	Boost       float64
+	Organic Query
+	Pinned  []PinnedDoc
+	Boost   float64
 }
 
 // PinnedDoc is one document to pin at the top.
@@ -294,12 +294,12 @@ type PinnedDoc struct {
 // TermsSetQuery matches documents that have at least a minimum number of
 // terms from a given set, with the minimum determined by a field value
 // or a script.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.18
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.18
 type TermsSetQuery struct {
-	Field               string
-	Values              []any
+	Field                   string
+	Values                  []any
 	MinimumShouldMatchField string
-	Boost               float64
+	Boost                   float64
 }
 
 // MatchNoneQuery matches no documents (score 0 for all).
@@ -314,37 +314,37 @@ type ScriptQuery struct {
 
 // PercolateQuery matches documents against registered percolator queries.
 type PercolateQuery struct {
-	Field        string
-	Document     map[string]any
-	DocumentID   string
-	Index        string
-	Boost        float64
+	Field      string
+	Document   map[string]any
+	DocumentID string
+	Index      string
+	Boost      float64
 }
 
 // GeoShapeQuery matches documents with geo_shape fields against a query shape.
 type GeoShapeQuery struct {
-	Field        string
-	Shape        map[string]any
-	Relation     string // "intersects" | "within" | "contains" | "disjoint"
-	Boost        float64
+	Field    string
+	Shape    map[string]any
+	Relation string // "intersects" | "within" | "contains" | "disjoint"
+	Boost    float64
 }
 
 // IntervalsQuery matches documents based on term positions and interval rules.
 type IntervalsQuery struct {
-	Field  string
-	AllOf  *IntervalRule
-	AnyOf  *IntervalRule
-	Rules  map[string]any
-	Boost  float64
+	Field string
+	AllOf *IntervalRule
+	AnyOf *IntervalRule
+	Rules map[string]any
+	Boost float64
 }
 
 // IntervalRule defines an interval matching rule.
 type IntervalRule struct {
-	Match   map[string]any
-	Prefix  map[string]any
+	Match    map[string]any
+	Prefix   map[string]any
 	Wildcard map[string]any
-	AllOf   []IntervalRule
-	AnyOf   []IntervalRule
+	AllOf    []IntervalRule
+	AnyOf    []IntervalRule
 }
 
 // NestedQuery queries within nested object fields.
@@ -357,18 +357,18 @@ type NestedQuery struct {
 
 func (*MatchAllQuery) queryNode()     {}
 func (*MultiMatchQuery) queryNode()   {}
-func (*QueryStringQuery) queryNode() {}
+func (*QueryStringQuery) queryNode()  {}
 func (*FuzzyQuery) queryNode()        {}
-func (*TermQuery) queryNode()        {}
-func (*TermsQuery) queryNode()       {}
-func (*RangeQuery) queryNode()       {}
-func (*ExistsQuery) queryNode()      {}
-func (*MatchQuery) queryNode()       {}
-func (*MatchPhraseQuery) queryNode() {}
-func (*BoolQuery) queryNode()        {}
-func (*KnnQuery) queryNode()         {}
+func (*TermQuery) queryNode()         {}
+func (*TermsQuery) queryNode()        {}
+func (*RangeQuery) queryNode()        {}
+func (*ExistsQuery) queryNode()       {}
+func (*MatchQuery) queryNode()        {}
+func (*MatchPhraseQuery) queryNode()  {}
+func (*BoolQuery) queryNode()         {}
+func (*KnnQuery) queryNode()          {}
 func (*SparseVectorQuery) queryNode() {}
-func (*HybridQuery) queryNode()      {}
+func (*HybridQuery) queryNode()       {}
 
 // PipelineQuery is the UniSearch-specific unified query pipeline
 // (Qdrant-style Query API). It supports nested Prefetch sub-queries,
@@ -376,12 +376,12 @@ func (*HybridQuery) queryNode()      {}
 // Existing HybridQuery is a simplified single-level version; Pipeline
 // is the general multi-level superset.
 //
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.5
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.5
 type PipelineQuery struct {
 	Prefetches []json.RawMessage // nested sub-queries (JSON Raw for deferred parsing)
-	Fusion     RankSpec           // fusion strategy between prefetch results
-	Rescore    []RescoreSpec      // rescore stages applied after fusion
-	Size       int                // final result count
+	Fusion     RankSpec          // fusion strategy between prefetch results
+	Rescore    []RescoreSpec     // rescore stages applied after fusion
+	Size       int               // final result count
 }
 
 // RescoreSpec configures one rescore stage in the pipeline.
@@ -392,10 +392,11 @@ type RescoreSpec struct {
 }
 
 func (*PipelineQuery) queryNode() {}
+
 // FunctionScoreQuery wraps an inner query and applies score functions
 // (random_score, field_value_factor, script_score, decay) to modify
 // the score of matching documents.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.6
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.6
 type FunctionScoreQuery struct {
 	Query     Query
 	Functions []ScoreFunction
@@ -424,14 +425,14 @@ type ScoreFunction struct {
 	Params map[string]any
 
 	// decay (exp/gauss/linear)
-	Origin  any
-	Scale   any
-	Offset  any
-	Decay   float64
+	Origin any
+	Scale  any
+	Offset any
+	Decay  float64
 }
 
 // ScriptScoreQuery re-scores matching documents using a Painless script.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
 type ScriptScoreQuery struct {
 	Query    Query
 	Script   string
@@ -441,52 +442,52 @@ type ScriptScoreQuery struct {
 
 // GeoDistanceQuery matches documents with geo_point values within the
 // given distance from a center point.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.8
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.8
 type GeoDistanceQuery struct {
-	Field       string
-	Lat         float64
-	Lon         float64
-	Distance    string // e.g. "200km", "50mi"
-	DistanceM   float64 // parsed distance in meters
-	Boost       float64
+	Field     string
+	Lat       float64
+	Lon       float64
+	Distance  string  // e.g. "200km", "50mi"
+	DistanceM float64 // parsed distance in meters
+	Boost     float64
 }
 
 // GeoBoundingBoxQuery matches documents with geo_point values inside the
 // given bounding box.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.9
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.9
 type GeoBoundingBoxQuery struct {
-	Field string
-	Top   float64
-	Left  float64
+	Field  string
+	Top    float64
+	Left   float64
 	Bottom float64
-	Right float64
+	Right  float64
 	Boost  float64
 }
 
-func (*PrefixQuery) queryNode()       {}
-func (*RegexpQuery) queryNode()      {}
-func (*ConstantScoreQuery) queryNode() {}
-func (*BoostingQuery) queryNode()    {}
-func (*DisMaxQuery) queryNode()      {}
-func (*FunctionScoreQuery) queryNode() {}
-func (*ScriptScoreQuery) queryNode()  {}
-func (*GeoDistanceQuery) queryNode()  {}
-func (*GeoBoundingBoxQuery) queryNode() {}
-func (*MoreLikeThisQuery) queryNode()   {}
+func (*PrefixQuery) queryNode()            {}
+func (*RegexpQuery) queryNode()            {}
+func (*ConstantScoreQuery) queryNode()     {}
+func (*BoostingQuery) queryNode()          {}
+func (*DisMaxQuery) queryNode()            {}
+func (*FunctionScoreQuery) queryNode()     {}
+func (*ScriptScoreQuery) queryNode()       {}
+func (*GeoDistanceQuery) queryNode()       {}
+func (*GeoBoundingBoxQuery) queryNode()    {}
+func (*MoreLikeThisQuery) queryNode()      {}
 func (*SimpleQueryStringQuery) queryNode() {}
-func (*CombinedFieldsQuery) queryNode() {}
-func (*MatchBoolPrefixQuery) queryNode() {}
-func (*DistanceFeatureQuery) queryNode() {}
-func (*RankFeatureQuery) queryNode()   {}
-func (*WrapperQuery) queryNode()       {}
-func (*PinnedQuery) queryNode()         {}
-func (*TermsSetQuery) queryNode()       {}
-func (*MatchNoneQuery) queryNode()       {}
-func (*ScriptQuery) queryNode()         {}
-func (*PercolateQuery) queryNode()       {}
-func (*GeoShapeQuery) queryNode()       {}
-func (*IntervalsQuery) queryNode()      {}
-func (*NestedQuery) queryNode()         {}
+func (*CombinedFieldsQuery) queryNode()    {}
+func (*MatchBoolPrefixQuery) queryNode()   {}
+func (*DistanceFeatureQuery) queryNode()   {}
+func (*RankFeatureQuery) queryNode()       {}
+func (*WrapperQuery) queryNode()           {}
+func (*PinnedQuery) queryNode()            {}
+func (*TermsSetQuery) queryNode()          {}
+func (*MatchNoneQuery) queryNode()         {}
+func (*ScriptQuery) queryNode()            {}
+func (*PercolateQuery) queryNode()         {}
+func (*GeoShapeQuery) queryNode()          {}
+func (*IntervalsQuery) queryNode()         {}
+func (*NestedQuery) queryNode()            {}
 
 // SamePositionQuery matches documents where all terms appear at the
 // same token position (e.g., synonym expansion placing multiple tokens

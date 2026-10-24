@@ -2,9 +2,9 @@
 
 // Package simd dispatch_amd64.go selects the best available kernel set
 // on x86_64 at init time. Three-level fallback:
-//   1. AVX2+FMA  → 256-bit assembly kernels (when available)
-//   2. SSE2       → 128-bit fallback kernels (when available)
-//   3. pure Go    → kernel_purego.go functions (always available)
+//  1. AVX2+FMA  → 256-bit assembly kernels (when available)
+//  2. SSE2       → 128-bit fallback kernels (when available)
+//  3. pure Go    → kernel_purego.go functions (always available)
 //
 // Until the avo-generated assembly (.s files) are checked in, every
 // path falls back to pure Go. The dispatch infrastructure is in place

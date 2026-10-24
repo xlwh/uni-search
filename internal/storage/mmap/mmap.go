@@ -29,9 +29,9 @@ var Enabled atomic.Bool
 // instance is in fallback mode (data loaded via os.ReadFile, no
 // mmap region to unmap).
 type MmapFile struct {
-	data    []byte // mapped region or fallback buffer
-	fd      int    // underlying file descriptor (-1 = fallback)
-	size    int64  // file size
+	data     []byte // mapped region or fallback buffer
+	fd       int    // underlying file descriptor (-1 = fallback)
+	size     int64  // file size
 	fallback bool   // true when using os.ReadFile instead of mmap
 }
 

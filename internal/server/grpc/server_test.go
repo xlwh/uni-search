@@ -86,9 +86,9 @@ func TestMetaServerApply(t *testing.T) {
 func TestMetaServerHeartbeat(t *testing.T) {
 	srv := NewMetaServer()
 	resp, err := srv.Heartbeat(context.Background(), &gen.NodeInfo{
-		Id:    "node-1",
-		Addr:  "localhost:9300",
-		Role:  "shard",
+		Id:   "node-1",
+		Addr: "localhost:9300",
+		Role: "shard",
 	})
 	assert.NoError(t, err)
 	assert.True(t, resp.Acknowledged)

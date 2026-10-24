@@ -45,17 +45,17 @@ func (t *Tracer) Render() map[string]any {
 	queries := make([]map[string]any, len(t.phases))
 	for i, p := range t.phases {
 		queries[i] = map[string]any{
-			"type":           p.Type,
-			"description":    p.Description,
-			"time_in_nanos":  p.TimeNanos,
-			"breakdown":      p.Breakdown,
+			"type":          p.Type,
+			"description":   p.Description,
+			"time_in_nanos": p.TimeNanos,
+			"breakdown":     p.Breakdown,
 		}
 	}
 	return map[string]any{
 		"profile": map[string]any{
 			"shards": []map[string]any{
 				{
-					"id":      "[unisearch][0]",
+					"id": "[unisearch][0]",
 					"searches": []map[string]any{
 						{
 							"query":        queries,

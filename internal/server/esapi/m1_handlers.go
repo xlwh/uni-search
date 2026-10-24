@@ -53,10 +53,10 @@ func (s *Server) handleMSearch(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		resp := map[string]any{
-			"took": res.Took,
+			"took":      res.Took,
 			"timed_out": res.TimedOut,
 			"hits": map[string]any{
-				"total": map[string]any{"value": res.Total, "relation": res.Relation},
+				"total":     map[string]any{"value": res.Total, "relation": res.Relation},
 				"max_score": res.MaxScore,
 				"hits":      reshapeHits(res.Hits),
 			},
@@ -109,12 +109,12 @@ func (s *Server) handleFieldCaps(w http.ResponseWriter, r *http.Request) {
 			}
 			fieldsMap[field] = map[string]any{
 				typeName: map[string]any{
-					"type":                     fd["type"],
-					"metadata_field":           false,
-					"searchable":               true,
-					"aggregatable":             true,
-					"indices":                  []string{idx},
-					"non_searchable_indices":   []string{},
+					"type":                   fd["type"],
+					"metadata_field":         false,
+					"searchable":             true,
+					"aggregatable":           true,
+					"indices":                []string{idx},
+					"non_searchable_indices": []string{},
 				},
 			}
 		}

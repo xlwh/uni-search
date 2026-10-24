@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.1
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.1
 
 func TestSparseInvertedIndex_BasicSearch(t *testing.T) {
 	// Build a small sparse vector index:
@@ -126,7 +126,7 @@ func TestSparseInvertedIndex_LargeScale(t *testing.T) {
 	// Test with 1000 docs and multiple dimensions.
 	idx := NewSparseInvertedIndex("test", WeightF32)
 	for i := int32(1); i <= 1000; i++ {
-		dims := []uint64{uint64(i % 100), uint64((i*7) % 100)}
+		dims := []uint64{uint64(i % 100), uint64((i * 7) % 100)}
 		weights := []float32{float32(i) / 1000.0, float32(i) / 500.0}
 		require.NoError(t, idx.AddVector(i, dims, weights))
 	}

@@ -19,26 +19,26 @@ import (
 // here; the Raft log only carries commands that mutate this state.
 type MetaState struct {
 	mu         sync.RWMutex
-	Version    uint64                              // state machine version
-	Schemas    map[types.IndexID]*meta.IndexMeta   // index → metadata
-	Routes     map[types.ShardID]*RouteEntry       // shard → replica group
-	Tenants    map[types.TenantID]*TenantMeta     // tenant → quota/isolation
-	Watermarks map[types.ShardID]types.SeqNo      // per-shard visibility
-	Members    []NodeInfo                          // cluster members
+	Version    uint64                            // state machine version
+	Schemas    map[types.IndexID]*meta.IndexMeta // index → metadata
+	Routes     map[types.ShardID]*RouteEntry     // shard → replica group
+	Tenants    map[types.TenantID]*TenantMeta    // tenant → quota/isolation
+	Watermarks map[types.ShardID]types.SeqNo     // per-shard visibility
+	Members    []NodeInfo                        // cluster members
 }
 
 // RouteEntry maps a shard to its Raft replica group.
 type RouteEntry struct {
 	ShardID    types.ShardID
 	IndexID    types.IndexID
-	RaftGroup  []NodeID   // replica group (1 leader + N followers)
-	Generation uint64     // split/migrate generation (D4: Gen dual-version)
+	RaftGroup  []NodeID // replica group (1 leader + N followers)
+	Generation uint64   // split/migrate generation (D4: Gen dual-version)
 }
 
 // TenantMeta holds tenant configuration.
 type TenantMeta struct {
 	ID            types.TenantID
-	Mode          string    // "dedicated" | "shared-shard" | "cold"
+	Mode          string // "dedicated" | "shared-shard" | "cold"
 	Quota         TenantQuota
 	ResourceGroup string
 }
@@ -55,17 +55,17 @@ type TenantQuota struct {
 type NodeInfo struct {
 	ID        NodeID
 	Addr      string
-	Role      string   // "meta" | "coordinator" | "shard"
-	LastSeen  int64    // unix timestamp
+	Role      string // "meta" | "coordinator" | "shard"
+	LastSeen  int64  // unix timestamp
 	Resources ResourceReport
 }
 
 // ResourceReport is a node's resource usage snapshot.
 type ResourceReport struct {
-	CPUUsagePct float64
-	MemUsagePct float64
+	CPUUsagePct  float64
+	MemUsagePct  float64
 	DiskUsagePct float64
-	IOUsagePct  float64
+	IOUsagePct   float64
 }
 
 // NodeID identifies a cluster node.
@@ -244,9 +244,9 @@ func (s *MetaState) applyAddReplica(payload []byte) error {
 func (s *MetaState) applySplitShard(payload []byte) error {
 	var cmd struct {
 		ParentShardID types.ShardID
-		ChildShardIDs  []types.ShardID
-		NewGeneration  uint64
-		RaftGroups     [][]NodeID // one per child
+		ChildShardIDs []types.ShardID
+		NewGeneration uint64
+		RaftGroups    [][]NodeID // one per child
 	}
 	if err := json.Unmarshal(payload, &cmd); err != nil {
 		return fmt.Errorf("raft: decode SplitShard: %w", err)

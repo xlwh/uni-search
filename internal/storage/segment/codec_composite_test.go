@@ -3,8 +3,8 @@ package segment
 import (
 	"testing"
 
-	"github.com/unisearch-db/unisearch/internal/meta"
 	"github.com/stretchr/testify/require"
+	"github.com/unisearch-db/unisearch/internal/meta"
 )
 
 // @spec: 02_spec.md#3.8 F2-T01..T06
@@ -28,7 +28,7 @@ func TestF2_DoubleDeltaDirect(t *testing.T) {
 		},
 		{
 			name: "quadratic_step",
-			vals: genLongs(200, func(i int) int64 { return int64(i*i) }),
+			vals: genLongs(200, func(i int) int64 { return int64(i * i) }),
 		},
 		{
 			name: "constant",

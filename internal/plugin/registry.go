@@ -23,7 +23,7 @@ type RemoteIndex interface {
 
 // PluginRegistry manages both in-process and sidecar plugins.
 type PluginRegistry struct {
-	mu       sync.RWMutex
+	mu        sync.RWMutex
 	inProcess map[string]index.IndexFactory
 	sidecars  map[string]*SidecarClient
 }

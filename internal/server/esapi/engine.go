@@ -29,7 +29,7 @@ type IndexDoc struct {
 	ID            string
 	Source        []byte
 	IfSeqNo       *int64 // when set, optimistic locking (409 on mismatch)
-	IfPrimaryTerm  int64 // @spec: deep-gap-remediation 02_spec.md#2.3.5
+	IfPrimaryTerm int64  // @spec: deep-gap-remediation 02_spec.md#2.3.5
 	Pipeline      string // @spec: es-feature-gap-fill 02_spec.md#2.7
 }
 
@@ -54,7 +54,7 @@ type SearchHit struct {
 	Primary    int64
 	SortValues []any
 	Highlight  map[string][]string // M1: per-field highlight fragments
-	Fields     map[string]any       // P2: script_fields + runtime_mappings results
+	Fields     map[string]any      // P2: script_fields + runtime_mappings results
 }
 
 // SearchResult is the engine-side search outcome; the handler
@@ -67,10 +67,10 @@ type SearchResult struct {
 	Relation     string // "eq" | "gte"
 	MaxScore     *float32
 	Hits         []SearchHit
-	Aggregations map[string]any // M1: aggregation results (nil when no aggs)
+	Aggregations map[string]any                 // M1: aggregation results (nil when no aggs)
 	Highlight    map[string]map[string][]string // M1: per-field highlight fragments (nil when no highlight)
-	Suggest      map[string]any // @spec: deep-gap-remediation 02_spec.md#2.3.4
-	Profile      map[string]any // @spec: deep-gap-remediation 02_spec.md#2.3.4
+	Suggest      map[string]any                 // @spec: deep-gap-remediation 02_spec.md#2.3.4
+	Profile      map[string]any                 // @spec: deep-gap-remediation 02_spec.md#2.3.4
 }
 
 // ShardStats is the _shards block of the search response.

@@ -190,10 +190,10 @@ func TestTwoPhaseAvgMerge(t *testing.T) {
 func TestTwoPhaseStatsMerge(t *testing.T) {
 	// Stats merge: combine sum, count, min, max from two shards.
 	type shardStats struct {
-		count     float64
-		sum       float64
-		min, max  float64
-		avg       float64
+		count    float64
+		sum      float64
+		min, max float64
+		avg      float64
 	}
 
 	s1 := shardStats{count: 10, sum: 500, min: 5, max: 100}

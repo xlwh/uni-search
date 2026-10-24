@@ -362,9 +362,9 @@ func TestE2E_PIT(t *testing.T) {
 	// Create PIT.
 	body := doReq(t, server, "POST", "/pit-test/_pit?keep_alive=5m", `{}`)
 	var pitResp struct {
-		ID      string `json:"id"`
-		Shards  struct {
-			Total     int `json:"total"`
+		ID     string `json:"id"`
+		Shards struct {
+			Total      int `json:"total"`
 			Successful int `json:"successful"`
 		} `json:"_shards"`
 	}
@@ -542,8 +542,8 @@ func TestE2E_HighlightInHit(t *testing.T) {
 	var result struct {
 		Hits struct {
 			Hits []struct {
-				ID        string                 `json:"_id"`
-				Highlight map[string][]string    `json:"highlight"`
+				ID        string              `json:"_id"`
+				Highlight map[string][]string `json:"highlight"`
 			} `json:"hits"`
 		} `json:"hits"`
 	}
@@ -622,7 +622,7 @@ func TestE2E_IndexTemplate(t *testing.T) {
 	body := doReq(t, server, "GET", "/_index_template", ``)
 	var result struct {
 		IndexTemplates []struct {
-			Name     string         `json:"name"`
+			Name     string          `json:"name"`
 			Template json.RawMessage `json:"template"`
 		} `json:"index_templates"`
 	}
@@ -667,8 +667,8 @@ func doNDJSON(t *testing.T, server *httptest.Server, path, body string) {
 }
 
 type searchResponse struct {
-	Took   int `json:"took"`
-	Hits   struct {
+	Took int `json:"took"`
+	Hits struct {
 		Total struct {
 			Value    int    `json:"value"`
 			Relation string `json:"relation"`

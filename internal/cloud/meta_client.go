@@ -22,9 +22,9 @@ type MetaHTTPClient struct {
 func NewMetaHTTPClient(metaAddrs []string, nodeID string) *MetaHTTPClient {
 	return &MetaHTTPClient{
 		metaAddrs:  metaAddrs,
-		nodeID:    nodeID,
+		nodeID:     nodeID,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
-		leaderIdx: 0,
+		leaderIdx:  0,
 	}
 }
 
@@ -101,8 +101,8 @@ func (c *MetaHTTPClient) Heartbeat(nodeID string) error {
 
 // RouteTable represents the cluster routing table returned by the meta node.
 type RouteTable struct {
-	Members []RouteMember  `json:"members"`
-	Routes  []RouteEntry   `json:"routes"`
+	Members []RouteMember `json:"members"`
+	Routes  []RouteEntry  `json:"routes"`
 }
 
 type RouteMember struct {
@@ -112,9 +112,9 @@ type RouteMember struct {
 }
 
 type RouteEntry struct {
-	ShardID    uint64   `json:"shard_id"`
-	IndexID    uint32  `json:"index_id"`
-	RaftGroup  []string `json:"raft_group"`
+	ShardID   uint64   `json:"shard_id"`
+	IndexID   uint32   `json:"index_id"`
+	RaftGroup []string `json:"raft_group"`
 }
 
 // GetRoutes fetches the current routing table from the meta cluster.

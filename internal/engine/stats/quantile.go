@@ -10,7 +10,7 @@
 // of the full distribution. Quantiles are then computed exactly from the
 // sorted buffer.
 //
-// @spec: ./active_specs/2026-10-23-qdrant-features-import/02_spec.md#2.11
+// @spec: ./archive/2026-10-23-qdrant-features-import/02_spec.md#2.11
 package stats
 
 import (
@@ -27,11 +27,11 @@ const DefaultBufferSize = 1024
 // reservoir sampling. It maintains a sorted buffer of at most BufferSize
 // values and computes quantiles exactly from the buffer.
 type QuantileEstimator struct {
-	p        float64 // target quantile (0 < p < 1)
-	buffer   []float64 // sorted sample buffer
-	maxSize  int       // maximum buffer size
-	count    int       // total observations seen
-	rng      *rand.Rand // reservoir sampling RNG
+	p       float64    // target quantile (0 < p < 1)
+	buffer  []float64  // sorted sample buffer
+	maxSize int        // maximum buffer size
+	count   int        // total observations seen
+	rng     *rand.Rand // reservoir sampling RNG
 }
 
 // NewPSquareEstimator creates a quantile estimator for the given

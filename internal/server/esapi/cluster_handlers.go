@@ -7,7 +7,7 @@ import (
 	apierr "github.com/unisearch-db/unisearch/internal/errors"
 )
 
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.5
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.5
 
 // handleClusterState handles GET /_cluster/state and GET /_cluster/state/{metric}.
 func (s *Server) handleClusterState(w http.ResponseWriter, r *http.Request) {
@@ -51,15 +51,15 @@ func (s *Server) handleClusterState(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, 0, map[string]any{
-		"cluster_name":  health.ClusterName,
-		"cluster_uuid":  "unisearch-uuid",
-		"version":       1,
-		"state_uuid":    "state-1",
-		"master_node":   "node-1",
-		"blocks":        map[string]any{},
+		"cluster_name": health.ClusterName,
+		"cluster_uuid": "unisearch-uuid",
+		"version":      1,
+		"state_uuid":   "state-1",
+		"master_node":  "node-1",
+		"blocks":       map[string]any{},
 		"nodes": map[string]any{
 			"node-1": map[string]any{
-				"name":             "node-1",
+				"name":              "node-1",
 				"transport_address": "127.0.0.1:9300",
 				"roles":             []string{"master", "data", "ingest"},
 			},
@@ -89,7 +89,7 @@ func (s *Server) handleClusterStats(w http.ResponseWriter, r *http.Request) {
 	runtime.ReadMemStats(&memStats)
 
 	writeJSON(w, 0, map[string]any{
-		"_nodes": map[string]any{"total": 1, "successful": 1, "failed": 0},
+		"_nodes":       map[string]any{"total": 1, "successful": 1, "failed": 0},
 		"cluster_name": "unisearch",
 		"status":       "green",
 		"indices": map[string]any{
@@ -98,12 +98,12 @@ func (s *Server) handleClusterStats(w http.ResponseWriter, r *http.Request) {
 			"shards": map[string]any{"total": len(indices), "primaries": len(indices)},
 		},
 		"nodes": map[string]any{
-			"count":     1,
-			"versions":  []string{"8.12.0"},
-			"os":        map[string]any{"name": runtime.GOOS, "arch": runtime.GOARCH, "available_processors": runtime.NumCPU()},
-			"process":   map[string]any{"cpu": map[string]any{"percent": 0}},
-			"jvm":       map[string]any{"mem": map[string]any{"heap_used_in_bytes": memStats.Alloc, "heap_max_in_bytes": memStats.Sys}},
-			"fs":        map[string]any{"total_in_bytes": 0},
+			"count":    1,
+			"versions": []string{"8.12.0"},
+			"os":       map[string]any{"name": runtime.GOOS, "arch": runtime.GOARCH, "available_processors": runtime.NumCPU()},
+			"process":  map[string]any{"cpu": map[string]any{"percent": 0}},
+			"jvm":      map[string]any{"mem": map[string]any{"heap_used_in_bytes": memStats.Alloc, "heap_max_in_bytes": memStats.Sys}},
+			"fs":       map[string]any{"total_in_bytes": 0},
 		},
 	})
 }
@@ -127,7 +127,7 @@ func (s *Server) handleNodesStats(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, 0, map[string]any{
 		"_nodes":       map[string]any{"total": 1, "successful": 1, "failed": 0},
-		"cluster_name":  "unisearch",
+		"cluster_name": "unisearch",
 		"nodes": map[string]any{
 			"node-1": map[string]any{
 				"timestamp":         0,
@@ -141,11 +141,11 @@ func (s *Server) handleNodesStats(w http.ResponseWriter, r *http.Request) {
 					"shards": map[string]any{"total": len(indices)},
 				},
 				"os": map[string]any{
-					"cpu":    map[string]any{"percent": 0},
-					"mem":    map[string]any{"total_in_bytes": memStats.Sys, "used_in_bytes": memStats.Alloc},
+					"cpu": map[string]any{"percent": 0},
+					"mem": map[string]any{"total_in_bytes": memStats.Sys, "used_in_bytes": memStats.Alloc},
 				},
-				"process": map[string]any{"cpu": map[string]any{"percent": 0}},
-				"jvm":     map[string]any{"mem": map[string]any{"heap_used_in_bytes": memStats.Alloc}},
+				"process":     map[string]any{"cpu": map[string]any{"percent": 0}},
+				"jvm":         map[string]any{"mem": map[string]any{"heap_used_in_bytes": memStats.Alloc}},
 				"thread_pool": map[string]any{},
 			},
 		},
@@ -156,7 +156,7 @@ func (s *Server) handleNodesStats(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleNodesInfo(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 0, map[string]any{
 		"_nodes":       map[string]any{"total": 1, "successful": 1, "failed": 0},
-		"cluster_name":  "unisearch",
+		"cluster_name": "unisearch",
 		"nodes": map[string]any{
 			"node-1": map[string]any{
 				"name":              "node-1",
@@ -167,13 +167,13 @@ func (s *Server) handleNodesInfo(w http.ResponseWriter, r *http.Request) {
 				"build_flavor":      "default",
 				"roles":             []string{"master", "data", "ingest"},
 				"os": map[string]any{
-					"name":                runtime.GOOS,
-					"arch":                runtime.GOARCH,
+					"name":                 runtime.GOOS,
+					"arch":                 runtime.GOARCH,
 					"available_processors": runtime.NumCPU(),
 				},
 				"jvm": map[string]any{
-					"version":  "go-runtime",
-					"vm_name":  "go",
+					"version": "go-runtime",
+					"vm_name": "go",
 				},
 				"process": map[string]any{"id": 1},
 			},
@@ -182,7 +182,7 @@ func (s *Server) handleNodesInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGetClusterSettings handles GET /_cluster/settings.
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.5.5
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.5.5
 func (s *Server) handleGetClusterSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 0, map[string]any{
 		"persistent": map[string]any{},
@@ -204,10 +204,10 @@ func (s *Server) handlePutClusterSettings(w http.ResponseWriter, r *http.Request
 func (s *Server) handleNodesUsage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 0, map[string]any{
 		"_nodes":       map[string]any{"total": 1, "successful": 1, "failed": 0},
-		"cluster_name":  "unisearch",
+		"cluster_name": "unisearch",
 		"nodes": map[string]any{
 			"node-1": map[string]any{
-				"timestamp": 0,
+				"timestamp":    0,
 				"rest_actions": []map[string]any{},
 			},
 		},
@@ -216,10 +216,10 @@ func (s *Server) handleNodesUsage(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleNodesCapabilities(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 0, map[string]any{
-		"_nodes":       map[string]any{"total": 1, "successful": 1, "failed": 0},
+		"_nodes": map[string]any{"total": 1, "successful": 1, "failed": 0},
 		"capabilities": map[string]any{
-			"rest_actions":         map[string]any{"metrics": map[string]any{"_all": true}},
-			"metric_descriptors":   map[string]any{},
+			"rest_actions":       map[string]any{"metrics": map[string]any{"_all": true}},
+			"metric_descriptors": map[string]any{},
 		},
 	})
 }

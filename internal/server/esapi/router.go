@@ -59,7 +59,7 @@ func NewServer(engine Engine) *Server {
 // Paths under /_synonyms/ and /_async_search/ with an id suffix are
 // intercepted here to avoid Go 1.22 ServeMux pattern conflicts with
 // /{index}/_mapping and /{index}/_doc/{id} (wildcard-vs-literal ambiguity).
-// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.8
+// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.8
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mw := chain(withRecovery, withMetricsAdapter, withTracingAdapter, withRequestLog)
 
@@ -118,7 +118,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// Intercept /_snapshot/ paths to avoid Go 1.22 ServeMux pattern conflicts.
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.6
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.6
 	if strings.HasPrefix(path, "/_snapshot/") && len(path) > len("/_snapshot/") {
 		rest := path[len("/_snapshot/"):]
 		parts := strings.SplitN(rest, "/", 2)
@@ -172,7 +172,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// Intercept /_scripts/ paths to avoid Go 1.22 ServeMux pattern conflicts
 	// with /{index}/_mapping (wildcard {id} at position 1 conflicts).
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.5
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.3.5
 	if strings.HasPrefix(path, "/_scripts/") && len(path) > len("/_scripts/") {
 		id := path[len("/_scripts/"):]
 		if id != "" {
@@ -289,7 +289,7 @@ func (s *Server) register() {
 	s.mux.HandleFunc("DELETE /_search/scroll", mw(s.handleDeleteScroll))
 
 	// Synonyms (es-feature-gap-fill P0).
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.9
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.9
 	// NOTE: /_synonyms/{id} routes are intercepted in ServeHTTP before
 	// the mux to avoid Go 1.22 ServeMux pattern conflicts with
 	// /{index}/_mapping and /{index}/_doc/{id}. Only /_synonyms (list)
@@ -297,7 +297,7 @@ func (s *Server) register() {
 	s.mux.HandleFunc("GET /_synonyms", mw(s.handleGetSynonyms))
 
 	// Async search (es-feature-gap-fill P0).
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.8
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.8
 	// NOTE: /_async_search/{id} routes are intercepted in ServeHTTP.
 	// Only POST /_async_search (submit) and GET /_async_search/status/{id}
 	// are registered here (no pattern conflict).
@@ -305,14 +305,14 @@ func (s *Server) register() {
 	s.mux.HandleFunc("GET /_async_search/status/{id}", mw(s.handleGetAsyncSearchStatus))
 
 	// Term Vectors (es-feature-gap-fill P0).
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.10
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.10
 	s.mux.HandleFunc("GET /{index}/_termvectors/{id}", mw(s.handleTermVectors))
 	s.mux.HandleFunc("POST /{index}/_termvectors/{id}", mw(s.handleTermVectors))
 	s.mux.HandleFunc("GET /_mtermvectors", mw(s.handleMTermVectors))
 	s.mux.HandleFunc("POST /_mtermvectors", mw(s.handleMTermVectors))
 
 	// Index admin (es-feature-gap-fill P0+P1).
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.4
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.4
 	s.mux.HandleFunc("POST /{index}/_open", mw(s.handleOpenIndex))
 	s.mux.HandleFunc("POST /{index}/_close", mw(s.handleCloseIndex))
 	s.mux.HandleFunc("GET /{index}/_stats", mw(s.handleIndexStats))
@@ -322,7 +322,7 @@ func (s *Server) register() {
 	s.mux.HandleFunc("GET /_resolve/index/{name}", mw(s.handleResolveIndex))
 
 	// Cluster ops (es-feature-gap-fill P0+P1).
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.5
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.5
 	s.mux.HandleFunc("GET /_cluster/state", mw(s.handleClusterState))
 	s.mux.HandleFunc("GET /_cluster/state/{metric}", mw(s.handleClusterState))
 	s.mux.HandleFunc("GET /_cluster/stats", mw(s.handleClusterStats))
@@ -370,7 +370,7 @@ func (s *Server) register() {
 	s.mux.HandleFunc("POST /{index}/_clone/{target}", mw(s.handleCloneIndex))
 
 	// Ingest Pipeline (es-feature-gap-fill P0).
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.7
 	s.mux.HandleFunc("PUT /_ingest/pipeline/{id}", mw(s.handlePutPipeline))
 	s.mux.HandleFunc("GET /_ingest/pipeline", mw(s.handleGetPipelines))
 	s.mux.HandleFunc("GET /_ingest/pipeline/{id}", mw(s.handleGetPipeline))
@@ -379,7 +379,7 @@ func (s *Server) register() {
 	s.mux.HandleFunc("POST /_ingest/pipeline/_simulate", mw(s.handleSimulatePipeline))
 
 	// Snapshot (es-feature-gap-fill P0).
-	// @spec: ./active_specs/2026-10-22-es-feature-gap-fill/02_spec.md#2.6
+	// @spec: ./archive/2026-10-22-es-feature-gap-fill/02_spec.md#2.6
 	// NOTE: All /_snapshot/ sub-paths are intercepted in ServeHTTP to
 	// avoid Go 1.22 ServeMux pattern conflicts with /{index}/_doc/{id}
 	// (wildcard {repo} at position 1 conflicts with literal _doc).

@@ -19,10 +19,10 @@ import (
 // PQState holds Product Quantization state: M subspaces, each with
 // 256 K-means centroids. Every vector is encoded as M bytes.
 type PQState struct {
-	m         int           // number of subspaces
-	dsub      int           // dims per subspace = dims / m
-	centroids []float32     // m × 256 × dsub, flattened as m*256*dsub
-	codes     []byte        // n*m bytes, FixedLayout: code[i] at codes[i*m:(i+1)*m]
+	m         int       // number of subspaces
+	dsub      int       // dims per subspace = dims / m
+	centroids []float32 // m × 256 × dsub, flattened as m*256*dsub
+	codes     []byte    // n*m bytes, FixedLayout: code[i] at codes[i*m:(i+1)*m]
 	n         int
 	dims      int
 }

@@ -38,13 +38,13 @@ type Segment struct {
 	dir    string
 	footer *SegmentFooter
 
-	mu       sync.Mutex
-	closed   bool
-	cols     map[types.FieldID]*ColumnReader
-	idHash   *idHashTable
-	rowIDs   []string // row-ordered _id vector, lazy from id.hash
-	srcDec   []byte   // decompressed src.zst stream, lazy
-	srcOpen  bool
+	mu        sync.Mutex
+	closed    bool
+	cols      map[types.FieldID]*ColumnReader
+	idHash    *idHashTable
+	rowIDs    []string // row-ordered _id vector, lazy from id.hash
+	srcDec    []byte   // decompressed src.zst stream, lazy
+	srcOpen   bool
 	mmapFiles []*mmap.MmapFile // tracked for cleanup on Close
 }
 
